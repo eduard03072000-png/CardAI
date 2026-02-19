@@ -1,124 +1,112 @@
+<div align="center">
+
+<img src="https://img.shields.io/badge/CardAI-FF4D6D?style=for-the-badge&logo=sparkles&logoColor=white" alt="CardAI" height="40"/>
+
 # CardAI — AI-генератор карточек товаров
 
-<div align="center">
+**Генерируй карточки для Wildberries, Ozon и Авито за 30 секунд**
 
-![CardAI](https://img.shields.io/badge/CardAI-FF4D6D?style=for-the-badge&logo=sparkles&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js_15-000000?style=for-the-badge&logo=next.js&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Tailwind](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-22d3a0?style=for-the-badge)
+[![Next.js](https://img.shields.io/badge/Next.js_15-black?style=flat-square&logo=next.js)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Groq AI](https://img.shields.io/badge/Groq_AI-F55036?style=flat-square&logo=lightning&logoColor=white)](https://groq.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-**Генерируй карточки товаров для WB, Ozon и Авито за 30 секунд**
+[🚀 Демо](http://198.13.184.39) · [📖 Документация](#документация) · [🐛 Баги](https://github.com/eduard03072000-png/CardAI/issues)
 
-[🚀 Демо](http://198.13.184.39) · [🐛 Баги](https://github.com/eduard03072000-png/CardAI/issues) · [💡 Предложения](https://github.com/eduard03072000-png/CardAI/issues)
-
-</div>
-
----
-
-## ✦ О проекте
-
-**CardAI** — это веб-приложение на базе AI, которое автоматически генерирует продающие карточки товаров для маркетплейсов. Просто укажи название товара, характеристики и нажми кнопку — через 30 секунд получишь готовый заголовок, описание, SEO-ключи и файл Excel для загрузки.
-
-### Для кого
-
-| Кто | Зачем |
-|-----|-------|
-| 🏪 Продавцы на WB | Экономия 38+ минут на каждой карточке |
-| 🔵 Продавцы на Ozon | Автозаполнение всех обязательных полей |
-| 🟡 Продавцы на Авито | SEO-оптимизированные описания |
-| 📦 Оптовики | Массовая генерация через Excel-шаблон |
-
----
-
-## 🎯 Возможности
-
-- **🤖 AI-генерация** — заголовок, описание, ключевые слова и характеристики одним кликом
-- **📸 Анализ фотографий** — загрузи до 15 фото, AI распознает товар сам
-- **🛍 WB + Ozon + Авито** — отдельные шаблоны под требования каждого маркетплейса
-- **📊 SEO-анализ** — оценка карточки по 100-балльной шкале с рекомендациями
-- **📝 3 варианта заголовков** — под разные стратегии продаж
-- **📥 Excel-экспорт** — готовый файл для загрузки в личный кабинет WB/Ozon
-- **🔐 Авторизация по SMS/email** — без паролей
-- **🌐 Открытый доступ** — примеры карточек видны без регистрации
-
----
-
-## 🖥 Скриншоты
-
-<div align="center">
-
-| Генератор | Готовая карточка |
-|-----------|-----------------|
-| Форма с полями товара | Заголовок + описание + SEO |
-
-| SEO-анализ | История |
-|------------|---------|
-| Оценка по 100 баллов | Все сгенерированные карточки |
+![CardAI Preview](https://img.shields.io/badge/Live-198.13.184.39-22D3A0?style=for-the-badge&logo=vercel)
 
 </div>
 
 ---
 
-## 🛠 Технологии
+## ✨ Что умеет
+
+| Фича | Описание |
+|------|----------|
+| 🤖 **AI-генерация** | Заголовок, описание, SEO-ключи — через Groq (LLaMA 3) |
+| 📸 **Анализ фото** | Загрузи до 15 фотографий — AI сам распознает товар |
+| 📊 **SEO-оценка** | Скоринг карточки с рекомендациями по улучшению |
+| 📝 **3 варианта заголовков** | Под разные маркетинговые стратегии |
+| 📥 **Excel-экспорт** | Готовый файл для загрузки напрямую на WB / Ozon |
+| 🛍 **WB + Ozon + Авито** | Адаптация под каждую платформу |
+| 🔐 **Авторизация по SMS** | OTP через телефон или email |
+| 👁 **Публичный просмотр** | Примеры карточек без регистрации |
+
+---
+
+## 🖥 Стек технологий
 
 ```
-Frontend:    Next.js 15 (App Router) + TypeScript + Tailwind CSS
-Auth:        OTP по SMS/email (без паролей)
-AI:          Claude API (Anthropic)
-Storage:     File-based (JSON) — для dev/MVP
-Deploy:      VPS + PM2 + Nginx
+Frontend        Next.js 15 (App Router) · React 18 · TypeScript
+Стили           Tailwind CSS · CSS-in-JS (inline styles)
+AI              Groq API (LLaMA 3.3 70B) · Vision API
+Авторизация     OTP (SMS / Email) · Cookie-сессии
+Экспорт         SheetJS (xlsx)
+Деплой          Ubuntu VPS · PM2 · Nginx · Node.js
 ```
 
 ---
 
-## 🚀 Запуск локально
+## 🚀 Быстрый старт
 
-### Требования
-
-- Node.js 18+
-- npm / yarn
-
-### Установка
+### 1. Клонируй репозиторий
 
 ```bash
-# Клонировать репозиторий
 git clone https://github.com/eduard03072000-png/CardAI.git
 cd CardAI
-
-# Установить зависимости
-npm install
-
-# Создать .env.local (скопировать пример)
-cp .env.local.example .env.local
-# Заполнить переменные окружения
 ```
 
-### Переменные окружения
-
-```env
-# Anthropic API для генерации карточек
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Режим разработки (показывает OTP-код прямо на экране)
-DEV_MODE=true
-
-# SMS-провайдер (опционально, без него работает в DEV_MODE)
-SMS_API_KEY=...
-```
-
-### Запуск
+### 2. Установи зависимости
 
 ```bash
-# Разработка
-npm run dev
+npm install
+```
 
-# Продакшн
-npm run build
-npm start
+### 3. Настрой окружение
+
+```bash
+cp .env.example .env.local
+```
+
+Заполни `.env.local`:
+
+```env
+# Режим разработки (OTP-код виден в ответе API)
+DEV_MODE=true
+
+# Groq API — получи ключ на https://console.groq.com
+GROQ_API_KEY=your_groq_api_key
+
+# SMS (опционально, только для продакшна)
+# SMSC_LOGIN=your_login
+# SMSC_PASSWORD=your_password
+```
+
+### 4. Запусти
+
+```bash
+npm run dev
 ```
 
 Открой [http://localhost:3000](http://localhost:3000)
+
+---
+
+## 📦 Деплой на сервер
+
+В репозитории есть готовый скрипт `deploy.py` (требует `paramiko`):
+
+```bash
+pip install paramiko
+python deploy.py
+```
+
+Скрипт автоматически:
+- Загружает файлы на сервер по SFTP
+- Запускает `npm install` и `npm run build`
+- Перезапускает процесс через PM2
+- Перезагружает Nginx
 
 ---
 
@@ -129,64 +117,65 @@ CardAI/
 ├── app/
 │   ├── api/
 │   │   ├── auth/
-│   │   │   ├── send-otp/     # Отправка кода подтверждения
-│   │   │   ├── verify-otp/   # Проверка кода
+│   │   │   ├── send-otp/     # Отправка OTP-кода
+│   │   │   ├── verify-otp/   # Верификация кода
 │   │   │   └── logout/       # Выход
 │   │   └── generate/         # AI-генерация карточки
-│   ├── dashboard/            # Главная страница (генератор)
-│   ├── login/                # Страница входа
+│   ├── dashboard/
+│   │   ├── page.tsx          # Серверная страница (сессия)
+│   │   └── DashboardClient.tsx  # Главный UI (878 строк)
+│   ├── login/
+│   │   ├── page.tsx          # Страница входа
+│   │   └── StarfieldBg.tsx   # Анимированный фон
 │   ├── layout.tsx
 │   └── page.tsx
 ├── lib/
-│   ├── types.ts              # TypeScript типы
 │   ├── session.ts            # Управление сессиями
+│   ├── store.ts              # Файловое хранилище (dev)
 │   ├── otp.ts                # OTP логика
-│   ├── sms.ts                # SMS-отправка
-│   ├── store.ts              # File-based хранилище
-│   └── excel.ts              # Генерация Excel
-├── public/
-├── deploy.py                 # Деплой на VPS одной командой
-└── next.config.js
+│   ├── sms.ts                # SMS-провайдеры
+│   ├── excel.ts              # Экспорт в Excel
+│   └── types.ts              # TypeScript типы
+├── deploy.py                 # Скрипт деплоя
+└── .env.example              # Пример конфига
 ```
 
 ---
 
-## 🚢 Деплой на VPS
+## 🔑 API
 
-В проекте есть готовый скрипт `deploy.py` — он загружает файлы, собирает проект и перезапускает PM2:
-
-```bash
-python deploy.py
+### `POST /api/auth/send-otp`
+Отправляет OTP на телефон или email.
+```json
+{ "phone": "+79991234567" }
 ```
 
-Скрипт автоматически:
-1. Загружает файлы по SFTP
-2. Запускает `npm install` и `npm run build`
-3. Перезапускает процесс в PM2
-4. Проверяет конфиг Nginx и перезагружает его
+### `POST /api/auth/verify-otp`
+Верифицирует код и создаёт сессию.
+```json
+{ "phone": "+79991234567", "code": "1234" }
+```
+
+### `POST /api/generate`
+Генерирует карточку товара через AI.
+```json
+{
+  "platform": "wb",
+  "productName": "Кроссовки Nike Air Max",
+  "category": "Обувь / Кроссовки",
+  "price": "3490",
+  "images": ["data:image/jpeg;base64,..."]
+}
+```
 
 ---
 
-## 🗺 Roadmap
+## 🤝 Контрибьютинг
 
-- [ ] Массовая загрузка через CSV
-- [ ] История карточек в базе данных
-- [ ] Интеграция с WB API (авто-загрузка)
-- [ ] Интеграция с Ozon API
-- [ ] Личный кабинет со статистикой
-- [ ] Telegram-бот
-- [ ] Мобильное приложение
-
----
-
-## 🤝 Вклад в проект
-
-Pull request'ы приветствуются! Для крупных изменений сначала открой issue.
-
-1. Fork проекта
-2. Создай ветку (`git checkout -b feature/cool-feature`)
-3. Commit изменения (`git commit -m 'Add cool feature'`)
-4. Push в ветку (`git push origin feature/cool-feature`)
+1. Fork репозитория
+2. Создай ветку: `git checkout -b feature/amazing-feature`
+3. Закоммить: `git commit -m 'Add amazing feature'`
+4. Запушить: `git push origin feature/amazing-feature`
 5. Открой Pull Request
 
 ---
@@ -198,9 +187,5 @@ MIT © [Eduard](https://github.com/eduard03072000-png)
 ---
 
 <div align="center">
-
-Сделано с ❤️ для продавцов на маркетплейсах
-
-**[⭐ Поставь звезду, если проект полезен!](https://github.com/eduard03072000-png/CardAI)**
-
+<sub>Сделано с ❤️ для продавцов на маркетплейсах</sub>
 </div>
