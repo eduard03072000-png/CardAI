@@ -1,0 +1,103 @@
+import type { QueueItem } from './types'
+
+export async function exportToExcel(queue: QueueItem[]) {
+  if (queue.length === 0) return
+
+  // Динамический импорт — только на клиенте
+  const XLSX = await import('xlsx')
+
+  const wb = XLSX.utils.book_new()
+
+  // ── Инструкция ──
+  const infoRows = [
+    ['CardAI — Шаблон загрузки товаров'],
+    [''],
+    ['Листы в этом файле:'],
+    ...(queue.some(i => i.platform === 'wb') ? [['  WB Товары — Товары → Добавить → Много товаров → Загрузить из файла']] : []),
+    ...(queue.some(i => i.platform === 'ozon') ? [['  Ozon Товары — Товары → Добавить товары → Через шаблон']] : []),
+    ...(queue.some(i => i.platform === 'avito') ? [['  Авито Товары — загрузить через Avito Pro']] : []),
+    [''], ['* — обязательные поля'],
+  ]
+  const wsInfo = XLSX.utils.aoa_to_sheet(infoRows)
+  wsInfo['!cols'] = [{ wch: 90 }]
+  XLSX.utils.book_append_sheet(wb, wsInfo, '📋 Инструкция')
+
+  const wbItems = queue.filter(i => i.platform === 'wb')
+  const ozonItems = queue.filter(i => i.platform === 'ozon')
+  const avitoItems = queue.filter(i => i.platform === 'avito')
+
+  // ── WB лист ──
+  if (wbItems.length) {
+    const headers = [
+      'Артикул продавца *', 'Наименование товара *', 'Описание *', 'Бренд *',
+      'Категория WB *', 'Предмет (подкатегория) *', 'Цвет *', 'Размеры',
+      'Материал', 'Страна', 'Цена (руб) *', 'Скидка (%)', 'Пол', 'Сезон',
+      'Остаток (шт)', 'Ключевые слова',
+    ]
+    const rows = wbItems.map(({ form: f, result: r }) => [
+      f.vendorCode, r.title, r.description.replace(/\n/g, ' '),
+      f.brand, f.category.split('/')[0].trim(), f.category.split('/')[1]?.trim() || f.category,
+      f.color, f.sizes, f.material, f.country,
+      f.price, f.discount, f.gender, f.season, f.stock,
+      r.keywords.join(', '),
+    ])
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+    ws['!cols'] = [{ wch: 16 }, { wch: 50 }, { wch: 60 }, { wch: 14 }, { wch: 18 },
+      { wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 18 }, { wch: 16 },
+      { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 40 }]
+    XLSX.utils.book_append_sheet(wb, ws, '🛍 WB Товары')
+  }
+
+  // ── Ozon лист ──
+  if (ozonItems.length) {
+    const headers = [
+      'Артикул *', 'Название товара', 'Цена *', 'Цена до скидки',
+      'НДС *', 'Бренд *', 'Категория *', 'Цвет', 'Материал', 'Описание',
+      'Ключевые слова', 'Штрихкод (EAN)', 'Вес в упаковке, г',
+      'Ширина упаковки, мм', 'Высота упаковки, мм', 'Длина упаковки, мм',
+      'Ссылка на фото', 'Страна', 'Рассрочка', 'Баллы за отзывы',
+    ]
+    const rows = ozonItems.map(({ form: f, result: r }) => {
+      const price = parseFloat(f.price) || 0
+      const priceOriginal = price > 0 ? Math.round(price * 1.2) : ''
+      return [
+        f.vendorCodeOzon, r.title, f.price, priceOriginal,
+        f.nds || 'Не облагается', f.brand, f.category,
+        f.color, f.material, r.description.replace(/\n/g, ' '), r.keywords.join(', '),
+        f.barcode, f.weightG, f.dimWidth, f.dimHeight, f.dimLength,
+        f.photoUrl, f.country, f.installment || 'Нет', f.reviewPoints || 'Нет',
+      ]
+    })
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+    ws['!cols'] = [{ wch: 16 }, { wch: 50 }, { wch: 12 }, { wch: 14 }, { wch: 18 },
+      { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 18 }, { wch: 60 }, { wch: 40 },
+      { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
+      { wch: 40 }, { wch: 20 }, { wch: 12 }, { wch: 16 }]
+    XLSX.utils.book_append_sheet(wb, ws, '🔵 Ozon Товары')
+  }
+
+  // ── Авито лист ──
+  if (avitoItems.length) {
+    const headers = [
+      'Артикул', 'Название *', 'Категория *', 'Цена *', 'Описание',
+      'Бренд', 'Цвет', 'Размер', 'Материал', 'Состояние', 'Ключевые слова',
+    ]
+    const rows = avitoItems.map(({ form: f, result: r }) => [
+      f.vendorCode, r.title, f.category, f.price, r.description.replace(/\n/g, ' '),
+      f.brand, f.color, f.sizes, f.material, 'Новое', r.keywords.join(', '),
+    ])
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+    ws['!cols'] = [{ wch: 14 }, { wch: 50 }, { wch: 20 }, { wch: 12 }, { wch: 60 },
+      { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 12 }, { wch: 40 }]
+    XLSX.utils.book_append_sheet(wb, ws, '🟡 Авито Товары')
+  }
+
+  const ts = new Date().toLocaleDateString('ru').replace(/\./g, '-')
+  const platforms = [
+    wbItems.length && 'WB',
+    ozonItems.length && 'Ozon',
+    avitoItems.length && 'Avito',
+  ].filter(Boolean).join('-')
+
+  XLSX.writeFile(wb, `CardAI_${platforms}_${queue.length}товаров_${ts}.xlsx`)
+}
