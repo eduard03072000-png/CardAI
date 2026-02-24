@@ -26,6 +26,73 @@ const DEFAULT_FORM: ProductForm = {
   photoUrl: '', installment: 'Нет', reviewPoints: 'Нет', vendorCodeOzon: '',
 }
 
+const DEMO_FORM: ProductForm = {
+  productName: 'Кроссовки мужские Air Runner',
+  brand: 'CardAI Demo',
+  category: 'Обувь / Кроссовки',
+  price: '3490',
+  color: 'Белый / Чёрный',
+  sizes: '40, 41, 42, 43, 44, 45',
+  material: 'Сетка, искусственная замша',
+  country: 'Китай',
+  specs: 'подошва: EVA; застёжка: шнурки; стелька: ортопедическая; высота подошвы: 3 см; тип носка: круглый',
+  notes: 'Универсальные кроссовки для города и лёгких тренировок',
+  vendorCode: 'DEMO-AIR-001',
+  discount: '30',
+  gender: 'Мужской',
+  season: 'Весна-осень',
+  stock: '120',
+  nds: 'Не облагается',
+  barcode: '',
+  weightG: '',
+  dimLength: '',
+  dimWidth: '',
+  dimHeight: '',
+  photoUrl: '',
+  installment: 'Нет',
+  reviewPoints: 'Нет',
+  vendorCodeOzon: '',
+}
+
+const DEMO_RESULT: GenerateResult = {
+  title: 'Кроссовки мужские Air Runner, дышащая сетка и замша, подошва EVA, размеры 40–45',
+  description:
+    'Лёгкие мужские кроссовки Air Runner для города и тренировок. Верх из комбинации воздухопроницаемой сетки и мягкой искусственной замши обеспечивает комфорт в течение всего дня, а амортизирующая подошва EVA снижает ударную нагрузку на суставы.\n\n' +
+    'Подходят для повседневной носки, прогулок, работы и лёгкого фитнеса. Ортопедическая стелька поддерживает свод стопы, снижая усталость к концу дня. Универсальный чёрно‑белый цвет легко сочетается с джоггерами, джинсами и спортивными костюмами.\n\n' +
+    'Уход: протирайте обувь влажной губкой, избегайте агрессивных чистящих средств. Сушите при комнатной температуре вдали от батарей.',
+  keywords: [
+    'кроссовки мужские',
+    'кроссовки для города',
+    'обувь на каждый день',
+    'кроссовки с сеткой',
+    'подошва eva',
+  ],
+  attributes:
+    '• Материал верха: сетка, искусственная замша\n' +
+    '• Подошва: EVA, амортизирующая\n' +
+    '• Цвет: белый / чёрный\n' +
+    '• Размеры: 40, 41, 42, 43, 44, 45\n' +
+    '• Тип застёжки: шнурки\n' +
+    '• Сезон: весна–осень\n' +
+    '• Назначение: повседневная носка, прогулки, лёгкие тренировки',
+  variants: [
+    'Кроссовки мужские Air Runner, сетка и замша, лёгкие кроссы для города и спорта, размеры 40–45',
+    'Мужские кроссовки Air Runner на каждый день, дышащие, амортизирующая подошва EVA, универсальный чёрно‑белый цвет',
+    'Кроссовки мужские для города и фитнеса Air Runner, ортопедическая стелька, сетчатый верх, размеры 40–45',
+  ],
+  seoScore: {
+    total: 84,
+    title: 85,
+    description: 82,
+    keywords: 86,
+  },
+  tips: [
+    { type: 'ok', text: 'В заголовке есть ключевые слова и конкретика по материалам и назначению.' },
+    { type: 'ok', text: 'Описание раскрывает пользу для покупателя и сценарии использования.' },
+    { type: 'warn', text: 'Добавьте реальные отзывы и фото на ноге, чтобы повысить конверсию.' },
+  ],
+}
+
 interface UploadedImage { id: string; name: string; dataUrl: string }
 
 export default function DashboardClient({ phone }: { phone: string }) {
@@ -89,6 +156,15 @@ export default function DashboardClient({ phone }: { phone: string }) {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Ошибка')
     } finally { setLoading(false); setStep(-1) }
+  }
+
+  function loadDemo() {
+    setPlatform('wb')
+    setForm(DEMO_FORM)
+    setImages([])
+    setResult(DEMO_RESULT)
+    setTab('result')
+    setError('')
   }
 
   // ── Queue ─────────────────────────────────────────────────────
@@ -402,6 +478,26 @@ export default function DashboardClient({ phone }: { phone: string }) {
               style={{ width: '100%', padding: 16, background: 'linear-gradient(135deg,#ff4d6d,#7c3aed)', border: 'none', borderRadius: 12, color: 'white', fontSize: 13, cursor: form.productName ? 'pointer' : 'not-allowed', transition: 'all 0.2s', letterSpacing: -0.3, opacity: loading || !form.productName ? 0.5 : 1 }}>
               {loading ? '⟳ Генерирую...' : !phone ? '🔐 Войдите, чтобы сгенерировать' : images.length > 0 ? '✦ Анализировать фото и создать карточку' : '✦ Сгенерировать карточку'}
             </button>
+            {!result && (
+              <button
+                type="button"
+                onClick={loadDemo}
+                style={{
+                  marginTop: 10,
+                  width: '100%',
+                  padding: 10,
+                  background: 'none',
+                  border: '1px dashed #2a2a3d',
+                  borderRadius: 10,
+                  color: '#7070a0',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                Создать демо по шаблону (без входа)
+              </button>
+            )}
           </div>
         </div>
 
