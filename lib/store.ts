@@ -9,6 +9,8 @@ import os from 'os'
 const STORE_DIR = path.join(os.tmpdir(), 'cardai-dev')
 const OTP_FILE = path.join(STORE_DIR, 'otp.json')
 const SESSION_FILE = path.join(STORE_DIR, 'sessions.json')
+const TELEGRAM_LOGIN_FILE = path.join(STORE_DIR, 'telegram-logins.json')
+const USERS_FILE = path.join(STORE_DIR, 'users.json')
 
 function ensureDir() {
   if (!fs.existsSync(STORE_DIR)) fs.mkdirSync(STORE_DIR, { recursive: true })
@@ -45,4 +47,67 @@ export function readSessions(): Record<string, SessionEntry> {
 export function writeSessions(data: Record<string, SessionEntry>) {
   ensureDir()
   fs.writeFileSync(SESSION_FILE, JSON.stringify(data, null, 2))
+}
+
+// ---- Telegram login tokens ----
+export interface TelegramLoginEntry {
+  status: 'pending' | 'done'
+  telegramId?: number
+  username?: string
+  phone?: string
+  createdAt: number
+}
+
+export function readTelegramLogins(): Record<string, TelegramLoginEntry> {
+  ensureDir()
+  try { return JSON.parse(fs.readFileSync(TELEGRAM_LOGIN_FILE, 'utf8')) } catch { return {} }
+}
+
+export function writeTelegramLogins(data: Record<string, TelegramLoginEntry>) {
+  ensureDir()
+  fs.writeFileSync(TELEGRAM_LOGIN_FILE, JSON.stringify(data, null, 2))
+}
+
+// ---- Users ----
+export interface UserEntry {
+  id: string
+  display: string
+  method: 'sms' | 'telegram'
+  createdAt: number
+  lastLoginAt: number
+  meta?: {
+    phone?: string
+    telegramId?: number
+    username?: string
+  }
+}
+
+export function readUsers(): Record<string, UserEntry> {
+  ensureDir()
+  try { return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')) } catch { return {} }
+}
+
+export function writeUsers(data: Record<string, UserEntry>) {
+  ensureDir()
+  fs.writeFileSync(USERS_FILE, JSON.stringify(data, null, 2))
+}
+
+export function upsertUser(entry: UserEntry) {
+  const users = readUsers()
+  const existing = users[entry.id]
+  const now = Date.now()
+  users[entry.id] = existing
+    ? {
+        ...existing,
+        display: entry.display,
+        method: entry.method,
+        lastLoginAt: now,
+        meta: { ...existing.meta, ...entry.meta },
+      }
+    : {
+        ...entry,
+        createdAt: now,
+        lastLoginAt: now,
+      }
+  writeUsers(users)
 }

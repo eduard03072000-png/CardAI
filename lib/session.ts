@@ -1,13 +1,23 @@
 import { cookies } from 'next/headers'
-import { readSessions, writeSessions } from './store'
+import { readSessions, writeSessions, upsertUser } from './store'
 
 const SESSION_COOKIE = 'cardai_session'
 
-export function createSession(phone: string): string {
+export function createSession(identity: string): string {
   const token = generateToken()
   const sessions = readSessions()
-  sessions[token] = { phone, createdAt: Date.now() }
+  sessions[token] = { phone: identity, createdAt: Date.now() }
   writeSessions(sessions)
+
+  const isTelegram = identity.startsWith('tg:')
+  upsertUser({
+    id: identity,
+    display: identity,
+    method: isTelegram ? 'telegram' : 'sms',
+    createdAt: Date.now(),
+    lastLoginAt: Date.now(),
+  })
+
   return token
 }
 

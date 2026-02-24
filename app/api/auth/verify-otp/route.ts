@@ -22,7 +22,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Слишком много попыток. Запросите новый код.' }, { status: 429 })
     }
 
-    // Создаём сессию
     const token = createSession(normalized)
 
     const response = NextResponse.json({ ok: true, phone: normalized })

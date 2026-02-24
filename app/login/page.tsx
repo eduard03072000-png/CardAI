@@ -14,10 +14,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [code, setCode] = useState(['', '', '', ''])
   const [loading, setLoading] = useState(false)
+  const [telegramLoading, setTelegramLoading] = useState(false)
   const [error, setError] = useState('')
   const [devCode, setDevCode] = useState('')
   const [countdown, setCountdown] = useState(0)
   const [sentTo, setSentTo] = useState('')
+
+  const tgPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const phoneRef = useRef<HTMLInputElement>(null)
   const codeRefs = [
@@ -30,6 +33,12 @@ export default function LoginPage() {
     const t = setTimeout(() => setCountdown(c => c - 1), 1000)
     return () => clearTimeout(t)
   }, [countdown])
+
+  useEffect(() => {
+    return () => {
+      if (tgPollRef.current) clearInterval(tgPollRef.current)
+    }
+  }, [])
 
   async function send() {
     const contact = tab === 'phone'
@@ -61,6 +70,59 @@ export default function LoginPage() {
       setError(e instanceof Error ? e.message : 'Ошибка')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function startTelegramLogin() {
+    setError('')
+    setTelegramLoading(true)
+    try {
+      const res = await fetch('/api/auth/telegram/start', {
+        method: 'POST',
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || 'Не удалось запустить вход через Telegram')
+      }
+
+      const { token, botUrl } = data as { token: string; botUrl: string }
+
+      // Открываем бота
+      if (typeof window !== 'undefined') {
+        // В мобильном Telegram лучше прямой redirect
+        window.open(botUrl, '_blank', 'noopener,noreferrer')
+      }
+
+      // Запускаем опрос статуса
+      if (tgPollRef.current) clearInterval(tgPollRef.current)
+      tgPollRef.current = setInterval(async () => {
+        try {
+          const pollRes = await fetch(`/api/auth/telegram/poll?token=${encodeURIComponent(token)}`)
+          const pollData = await pollRes.json()
+          if (!pollRes.ok) {
+            throw new Error(pollData.error || 'Ошибка при проверке Telegram-логина')
+          }
+          if (pollData.ok) {
+            if (tgPollRef.current) {
+              clearInterval(tgPollRef.current)
+              tgPollRef.current = null
+            }
+            router.push('/dashboard')
+          } else if (pollData.status === 'expired' || pollData.status === 'not_found') {
+            if (tgPollRef.current) {
+              clearInterval(tgPollRef.current)
+              tgPollRef.current = null
+            }
+            setError('Ссылка Telegram устарела, попробуйте еще раз')
+            setTelegramLoading(false)
+          }
+        } catch (e) {
+          console.error(e)
+        }
+      }, 2500)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Ошибка Telegram-авторизации')
+      setTelegramLoading(false)
     }
   }
 
@@ -171,12 +233,56 @@ export default function LoginPage() {
               <div style={{ flex: 1, height: 1, background: '#2a2a3d' }} />или войти через<div style={{ flex: 1, height: 1, background: '#2a2a3d' }} />
             </div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-              {['VK ID', 'Яндекс', 'Telegram'].map(s => (
-                <button key={s} onClick={() => alert('Социальная авторизация будет в релизе 🚀')}
-                  style={{ flex: 1, padding: '11px 6px', background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 10, color: '#7070a0', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer' }}>
-                  {s}
-                </button>
-              ))}
+              <button
+                onClick={startTelegramLogin}
+                disabled={telegramLoading}
+                style={{
+                  flex: 1,
+                  padding: '11px 6px',
+                  background: '#1c1c28',
+                  border: '1px solid #2a2a3d',
+                  borderRadius: 10,
+                  color: '#7070a0',
+                  fontFamily: 'inherit',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  opacity: telegramLoading ? 0.6 : 1,
+                }}
+              >
+                Telegram
+              </button>
+              <button
+                onClick={() => alert('VK ID будет доступен позже')}
+                style={{
+                  flex: 1,
+                  padding: '11px 6px',
+                  background: '#1c1c28',
+                  border: '1px solid #2a2a3d',
+                  borderRadius: 10,
+                  color: '#7070a0',
+                  fontFamily: 'inherit',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                VK ID
+              </button>
+              <button
+                onClick={() => alert('Яндекс-логин будет доступен позже')}
+                style={{
+                  flex: 1,
+                  padding: '11px 6px',
+                  background: '#1c1c28',
+                  border: '1px solid #2a2a3d',
+                  borderRadius: 10,
+                  color: '#7070a0',
+                  fontFamily: 'inherit',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                Яндекс
+              </button>
             </div>
           </>
         ) : (
