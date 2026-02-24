@@ -87,10 +87,10 @@ export default function LoginPage() {
 
       const { token, botUrl } = data as { token: string; botUrl: string }
 
-      // Открываем бота
+      // Открываем бота: на мобильных безопаснее перейти в этом окне,
+      // чтобы браузер не посчитал это всплывающим окном.
       if (typeof window !== 'undefined') {
-        // В мобильном Telegram лучше прямой redirect
-        window.open(botUrl, '_blank', 'noopener,noreferrer')
+        window.location.href = botUrl
       }
 
       // Запускаем опрос статуса
