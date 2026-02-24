@@ -93,6 +93,9 @@ const DEMO_RESULT: GenerateResult = {
   ],
 }
 
+const DEMO_IMAGE_DATA_URL =
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'><rect width='400' height='400' fill='%2312121a'/><rect x='40' y='220' width='320' height='90' rx='18' fill='%232a2a3d'/><circle cx='120' cy='285' r='18' fill='%23ffffff'/><circle cx='280' cy='285' r='18' fill='%23ffffff'/><path d='M60 230 Q140 150 260 150 L340 210 L340 240 L60 240 Z' fill='%23ff4d6d'/><text x='50%' y='70' fill='%23f0f0f8' font-size='26' text-anchor='middle' dominant-baseline='middle' font-family='system-ui, -apple-system, BlinkMacSystemFont, sans-serif'>DEMO Air Runner</text></svg>"
+
 interface UploadedImage { id: string; name: string; dataUrl: string }
 
 export default function DashboardClient({ phone }: { phone: string }) {
@@ -161,7 +164,13 @@ export default function DashboardClient({ phone }: { phone: string }) {
   function loadDemo() {
     setPlatform('wb')
     setForm(DEMO_FORM)
-    setImages([])
+    setImages([
+      {
+        id: 'demo',
+        name: 'demo-air-runner.svg',
+        dataUrl: DEMO_IMAGE_DATA_URL,
+      },
+    ])
     setResult(DEMO_RESULT)
     setTab('result')
     setError('')
