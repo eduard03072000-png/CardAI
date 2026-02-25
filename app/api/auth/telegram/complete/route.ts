@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       status: 'done',
       telegramId: Number(telegramId),
       username: typeof username === 'string' ? username : undefined,
-      phone: typeof phone === 'string' ? phone : undefined,
+      email: typeof phone === 'string' ? phone : undefined,
     }
 
     writeTelegramLogins(logins)

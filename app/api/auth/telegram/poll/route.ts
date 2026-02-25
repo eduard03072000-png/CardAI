@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
     const displayId =
       (entry.username && `tg:@${entry.username}`) ||
-      entry.phone ||
+      entry.email ||
       `tg:${entry.telegramId}`
 
     const sessionToken = createSession(displayId)
