@@ -53,12 +53,12 @@ export default async function AdminUsersPage() {
                   >
                     <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {u.display}
-                      {u.meta?.phone && (
-                        <span style={{ marginLeft: 6, fontSize: 11, color: '#7070a0' }}>({u.meta.phone})</span>
+                      {u.meta?.email && (
+                        <span style={{ marginLeft: 6, fontSize: 11, color: '#7070a0' }}>({u.meta.email})</span>
                       )}
                     </div>
-                    <div style={{ color: isTelegram ? '#22d3a0' : '#ffb020', fontSize: 12 }}>
-                      {isTelegram ? 'Telegram' : 'SMS/телефон'}
+                    <div style={{ color: isTelegram ? '#22d3a0' : u.method === 'vk' ? '#4680C2' : u.method === 'yandex' ? '#FC3F1D' : '#ffb020', fontSize: 12 }}>
+                      {u.method === 'telegram' ? 'Telegram' : u.method === 'vk' ? 'VK' : u.method === 'yandex' ? 'Яндекс' : 'Email'}
                     </div>
                     <div style={{ fontSize: 12, color: '#a0a0c0' }}>{created}</div>
                     <div style={{ fontSize: 12, color: '#a0a0c0' }}>{last}</div>
