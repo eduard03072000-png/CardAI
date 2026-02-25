@@ -1003,7 +1003,7 @@ function PlansView({ phone, onBack, onLogout }: { phone: string; onBack: () => v
 }
 
 // ── History section ────────────────────────────────────────────────────────────
-function HistoryView({ phone, history, onBack, onDelete, onLogout }: { phone: string; history: HistoryItem[]; onBack: () => void; onDelete: (id: number) => void; onLogout: () => void }) {
+function HistoryView({ phone, history, onBack, onDelete, onLogout }: { phone: string; history: HistoryItem[]; onBack: () => void; onDelete: (id: number | string) => void; onLogout: () => void }) {
   return (
     <div style={{ background: '#0a0a0f', minHeight: '100vh' }}>
       <header style={{ display: 'flex', alignItems: 'center', padding: '0 32px', height: 60, borderBottom: '1px solid #2a2a3d', position: 'sticky', top: 0, background: '#0a0a0f', zIndex: 100 }}>
