@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [devCode, setDevCode] = useState('')
   const [countdown, setCountdown] = useState(0)
   const [sentTo, setSentTo] = useState('')
+  const [telegramPending, setTelegramPending] = useState(false)
 
   const codeRefs = [
     useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null),
@@ -94,6 +95,51 @@ export default function LoginPage() {
     }
   }
 
+  async function startTelegramAuth() {
+    if (telegramPending) return
+    setError('')
+    setTelegramPending(true)
+
+    try {
+      const startRes = await fetch('/api/auth/telegram/start', {
+        method: 'POST',
+      })
+      const startData = await startRes.json()
+      if (!startRes.ok || !startData?.token || !startData?.botUrl) {
+        throw new Error(startData?.error || 'Не удалось запустить вход через Telegram')
+      }
+
+      window.open(startData.botUrl, '_blank', 'noopener,noreferrer')
+      setError('Откройте Telegram и подтвердите вход, затем вернитесь сюда.')
+
+      const startedAt = Date.now()
+      const timeoutMs = (startData.expiresIn || 600) * 1000
+
+      while (Date.now() - startedAt < timeoutMs) {
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+        const pollRes = await fetch(`/api/auth/telegram/poll?token=${encodeURIComponent(startData.token)}`, {
+          cache: 'no-store',
+        })
+        const pollData = await pollRes.json()
+
+        if (pollData?.ok) {
+          router.push('/dashboard')
+          return
+        }
+
+        if (pollData?.status === 'expired' || pollData?.status === 'not_found') {
+          throw new Error('Сессия Telegram истекла. Запустите вход ещё раз.')
+        }
+      }
+
+      throw new Error('Время ожидания истекло. Попробуйте снова.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Ошибка входа через Telegram')
+    } finally {
+      setTelegramPending(false)
+    }
+  }
+
   const inp: React.CSSProperties = {
     background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 10,
     padding: '14px 16px', fontSize: 16, color: '#f0f0f8',
@@ -150,11 +196,12 @@ export default function LoginPage() {
                 Яндекс
               </a>
               <button
-                onClick={() => { window.location.href = '/api/auth/telegram/start' }}
+                onClick={startTelegramAuth}
+                disabled={telegramPending}
                 style={{ flex: 1, padding: '11px 6px', background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 10, color: '#26A5E4', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer', fontWeight: 600, transition: 'border-color 0.2s' }}
                 onMouseOver={e => (e.currentTarget.style.borderColor = '#26A5E4')}
                 onMouseOut={e => (e.currentTarget.style.borderColor = '#2a2a3d')}>
-                Telegram
+                {telegramPending ? 'Ожидание...' : 'Telegram'}
               </button>
             </div>
           </>
