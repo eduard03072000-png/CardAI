@@ -27,12 +27,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, status: 'pending' })
     }
 
-    const displayId =
-      (entry.username && `tg:@${entry.username}`) ||
-      entry.email ||
-      `tg:${entry.telegramId}`
-
-    const sessionToken = createSession(displayId)
+    const identity = `tg:${entry.telegramId}`
+    const display = entry.username ? `tg:@${entry.username}` : identity
+    const sessionToken = createSession(identity, {
+      display,
+      method: 'telegram',
+      meta: {
+        telegramId: entry.telegramId,
+        username: entry.username,
+        email: entry.email,
+      },
+    })
 
     // Можно очистить одноразовый токен после удачного логина
     delete logins[token]

@@ -1,25 +1,32 @@
 import { cookies } from 'next/headers'
-import { readSessions, writeSessions, upsertUser } from './store'
+import { readSessions, writeSessions, upsertUser, type UserEntry } from './store'
 
 const SESSION_COOKIE = 'cardai_session'
 
-export function createSession(identity: string): string {
+interface SessionProfile {
+  display?: string
+  meta?: UserEntry['meta']
+  method?: UserEntry['method']
+}
+
+export function createSession(identity: string, profile?: SessionProfile): string {
   const token = generateToken()
   const sessions = readSessions()
   sessions[token] = { email: identity, createdAt: Date.now() }
   writeSessions(sessions)
 
-  const method = identity.startsWith('vk:') ? 'vk'
+  const method = profile?.method || (identity.startsWith('vk:') ? 'vk'
     : identity.startsWith('ya:') ? 'yandex'
     : identity.startsWith('tg:') ? 'telegram'
-    : 'email'
+    : 'email')
 
   upsertUser({
     id: identity,
-    display: identity,
+    display: profile?.display || identity,
     method,
     createdAt: Date.now(),
     lastLoginAt: Date.now(),
+    meta: profile?.meta,
   })
 
   return token

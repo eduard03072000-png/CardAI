@@ -8,7 +8,37 @@ export default async function AdminUsersPage() {
   // В противном случае страница доступна без защиты (dev-режим).
 
   const users = readUsers()
-  const list = Object.values(users).sort((a, b) => b.lastLoginAt - a.lastLoginAt)
+  const deduped = new Map<string, (typeof users)[string]>()
+
+  for (const u of Object.values(users)) {
+    // Для Telegram считаем пользователя уникальным по telegramId/username,
+    // чтобы исторические записи с разными id не дублировались в админке.
+    const key = u.method === 'telegram'
+      ? (u.meta?.telegramId
+          ? `tg:id:${u.meta.telegramId}`
+          : `tg:user:${(u.meta?.username || u.display.replace(/^tg:@?/i, '')).trim().replace(/^@/, '').toLowerCase()}`)
+      : `${u.method}:${u.id.toLowerCase()}`
+
+    const prev = deduped.get(key)
+    if (!prev) {
+      deduped.set(key, u)
+      continue
+    }
+
+    if (u.lastLoginAt > prev.lastLoginAt) {
+      deduped.set(key, {
+        ...u,
+        createdAt: Math.min(prev.createdAt, u.createdAt),
+      })
+    } else {
+      deduped.set(key, {
+        ...prev,
+        createdAt: Math.min(prev.createdAt, u.createdAt),
+      })
+    }
+  }
+
+  const list = Array.from(deduped.values()).sort((a, b) => b.lastLoginAt - a.lastLoginAt)
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#f0f0f8', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif' }}>
