@@ -7,7 +7,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Яндекс OAuth не настроен' }, { status: 500 })
   }
 
-  const origin = req.nextUrl.origin
+  // Используем APP_URL из env или определяем из запроса
+  const origin = process.env.APP_URL || req.nextUrl.origin
   const redirectUri = `${origin}/api/auth/yandex/callback`
 
   const yaAuthUrl = new URL('https://oauth.yandex.ru/authorize')

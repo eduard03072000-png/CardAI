@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'VK OAuth не настроен' }, { status: 500 })
   }
 
-  const origin = req.nextUrl.origin
+  const origin = process.env.APP_URL || req.nextUrl.origin
   const redirectUri = `${origin}/api/auth/vk/callback`
 
   const vkAuthUrl = new URL('https://oauth.vk.com/authorize')

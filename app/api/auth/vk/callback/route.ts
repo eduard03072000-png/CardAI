@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const origin = req.nextUrl.origin
+    const origin = process.env.APP_URL || req.nextUrl.origin
     const redirectUri = `${origin}/api/auth/vk/callback`
 
     // Обмен code на access_token
