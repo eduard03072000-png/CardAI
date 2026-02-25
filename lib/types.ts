@@ -49,7 +49,7 @@ export interface QueueItem {
 }
 
 export interface HistoryItem {
-  id: number
+  id: number | string
   platform: Platform
   title: string
   date: string

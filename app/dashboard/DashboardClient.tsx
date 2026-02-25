@@ -1,12 +1,15 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Platform, ProductForm, GenerateResult, QueueItem, HistoryItem } from '@/lib/types'
 import { exportToExcel } from '@/lib/excel'
 
 type Tab = 'result' | 'seo' | 'variants'
 type Section = 'generator' | 'history' | 'plans'
+
+interface PlanInfo { id: string; name: string; dailyLimit: number; historyDays: number }
+interface ServerHistoryItem { id: string; platform: string; productName: string; category: string; result: GenerateResult; createdAt: string }
 
 const STEPS = ['Анализ фотографий', 'Распознавание характеристик', 'Подбор ключевых слов', 'Генерация описания', 'SEO-оптимизация']
 
@@ -113,10 +116,31 @@ export default function DashboardClient({ phone }: { phone: string }) {
   const [error, setError] = useState('')
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [history, setHistory] = useState<HistoryItem[]>([])
+  const [serverHistory, setServerHistory] = useState<ServerHistoryItem[]>([])
+  const [planInfo, setPlanInfo] = useState<PlanInfo>({ id: 'seller', name: 'Продавец', dailyLimit: 5, historyDays: 0 })
+  const [todayCount, setTodayCount] = useState(0)
   const [addedFeedback, setAddedFeedback] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const setF = (updates: Partial<ProductForm>) => setForm(prev => ({ ...prev, ...updates }))
+
+  // ── Load history & plan info on mount ─────────────────────────
+  useEffect(() => {
+    if (!phone) return
+    fetch('/api/history').then(r => r.json()).then(data => {
+      if (data.ok) {
+        setServerHistory(data.history || [])
+        setPlanInfo(data.plan || planInfo)
+        setTodayCount(data.todayCount || 0)
+        // Конвертируем серверную историю в формат UI
+        setHistory((data.history || []).map((h: ServerHistoryItem) => ({
+          id: h.id, platform: h.platform as Platform,
+          title: h.result?.title || h.productName,
+          date: new Date(h.createdAt).toLocaleDateString('ru'),
+        })))
+      }
+    }).catch(() => {})
+  }, [phone])
 
   // ── Images ────────────────────────────────────────────────────
   function fileToDataUrl(file: File): Promise<string> {
@@ -155,6 +179,10 @@ export default function DashboardClient({ phone }: { phone: string }) {
       if (!res.ok) throw new Error(data.error)
       setResult(data.data)
       setTab('result')
+      // Обновляем счётчик и историю из meta
+      if (data.meta) {
+        setTodayCount(data.meta.todayCount || todayCount + 1)
+      }
       setHistory(prev => [{ id: Date.now(), platform, title: data.data.title, date: new Date().toLocaleDateString('ru') }, ...prev])
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Ошибка')
@@ -223,7 +251,13 @@ export default function DashboardClient({ phone }: { phone: string }) {
   // ── HISTORY section ───────────────────────────────────────────
   if (section === 'history') return (
     <HistoryView phone={phone} history={history} onBack={() => setSection('generator')}
-      onDelete={id => setHistory(prev => prev.filter(i => i.id !== id))} onLogout={logout} />
+      onDelete={id => {
+        setHistory(prev => prev.filter(i => i.id !== id))
+        // Удаляем на сервере если это серверная запись (строковый id)
+        if (typeof id === 'string') {
+          fetch(`/api/history?id=${id}`, { method: 'DELETE' }).catch(() => {})
+        }
+      }} onLogout={logout} />
   )
 
   // ── GENERATOR section ─────────────────────────────────────────
@@ -479,6 +513,19 @@ export default function DashboardClient({ phone }: { phone: string }) {
               <input style={inp} value={form.notes} onChange={e => setF({ notes: e.target.value })}
                 placeholder="Целевая аудитория, УТП..." onFocus={focusBorder} onBlur={blurBorder} />
             </div>
+
+            {/* Счётчик лимита */}
+            {phone && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, padding: '10px 14px', background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 10 }}>
+                <div style={{ fontSize: 12, color: '#7070a0' }}>
+                  Тариф: <span style={{ color: '#f0f0f8', fontWeight: 600 }}>{planInfo.name}</span>
+                </div>
+                <div style={{ fontSize: 12 }}>
+                  <span style={{ color: todayCount >= planInfo.dailyLimit ? '#ff4d6d' : '#22d3a0', fontWeight: 700 }}>{todayCount}</span>
+                  <span style={{ color: '#7070a0' }}> / {planInfo.dailyLimit >= 999999 ? '∞' : planInfo.dailyLimit} сегодня</span>
+                </div>
+              </div>
+            )}
 
             {error && <p style={{ color: '#ff4d6d', background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.2)', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 14 }}>{error}</p>}
 

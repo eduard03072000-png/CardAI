@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentSession } from '@/lib/session'
+import { normalizeImageDataUrl, isImageTooLarge } from '@/lib/images'
+import { addHistoryItem, countTodayGenerations } from '@/lib/history'
+import { getUserPlan } from '@/lib/plans'
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
@@ -71,9 +74,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
   }
 
+  const userId = session.email
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: 'GROQ_API_KEY не настроен' }, { status: 500 })
+  }
+
+  // Проверяем лимит по тарифу
+  const plan = await getUserPlan(userId)
+  const todayCount = await countTodayGenerations(userId)
+  if (todayCount >= plan.dailyLimit) {
+    return NextResponse.json({
+      error: `Достигнут лимит на сегодня: ${plan.dailyLimit} карточек (тариф «${plan.name}»). Обновите тариф для увеличения лимита.`
+    }, { status: 429 })
   }
 
   try {
@@ -86,7 +99,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Обязательные поля не заполнены' }, { status: 400 })
     }
 
-    const hasImages = Array.isArray(images) && images.length > 0
+    // Обрабатываем изображения
+    let validImages: string[] = []
+    if (Array.isArray(images) && images.length > 0) {
+      for (const img of images.slice(0, 3)) {
+        // Пропускаем SVG (демо-картинки) — Groq не поддерживает SVG
+        if (typeof img === 'string' && img.includes('image/svg')) continue
+        const normalized = normalizeImageDataUrl(img)
+        if (normalized && !isImageTooLarge(normalized)) {
+          validImages.push(normalized)
+        }
+      }
+    }
+
+    const hasImages = validImages.length > 0
     const prompt = buildPrompt(platform, productName, specs || '', category || '', notes || '', hasImages,
       { brand, color, sizes, material, country, price, discount, gender, season, nds, barcode, weight: weightG })
 
@@ -94,14 +120,10 @@ export async function POST(req: NextRequest) {
     let userContent: unknown
 
     if (hasImages) {
-      // Используем vision-модель с изображениями
-      const imageContents = images.slice(0, 5).map((base64: string) => ({
+      const imageContents = validImages.map((url: string) => ({
         type: 'image_url',
-        image_url: {
-          url: base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`,
-        },
+        image_url: { url },
       }))
-
       userContent = [
         ...imageContents,
         { type: 'text', text: prompt },
@@ -122,12 +144,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model,
-        messages: [
-          {
-            role: 'user',
-            content: userContent,
-          },
-        ],
+        messages: [{ role: 'user', content: userContent }],
         temperature: 0.7,
         max_tokens: 2000,
       }),
@@ -147,10 +164,8 @@ export async function POST(req: NextRequest) {
     const groqData = await groqResponse.json()
     const rawText = groqData.choices?.[0]?.message?.content || ''
 
-    // Парсим JSON из ответа
     let parsed
     try {
-      // Убираем возможные markdown-блоки
       const cleaned = rawText
         .replace(/```json\s*/gi, '')
         .replace(/```\s*/g, '')
@@ -161,17 +176,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Не удалось разобрать ответ AI. Попробуй ещё раз.' }, { status: 500 })
     }
 
+    // Сохраняем в историю
+    await addHistoryItem(userId, {
+      platform,
+      productName,
+      category: category || '',
+      result: parsed,
+    })
+
     return NextResponse.json({
       ok: true,
       data: parsed,
       meta: {
-        platform,
-        productName,
-        specs,
-        category,
-        notes,
-        model,
-        hasImages,
+        platform, productName, model, hasImages,
+        imagesProcessed: validImages.length,
+        todayCount: todayCount + 1,
+        dailyLimit: plan.dailyLimit,
+        planName: plan.name,
         generatedAt: new Date().toISOString(),
       },
     })
