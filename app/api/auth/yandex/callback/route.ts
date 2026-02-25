@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSession, SESSION_COOKIE_NAME } from '@/lib/session'
+import { getOrigin } from '@/lib/url'
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code')
+  const origin = getOrigin(req)
+
   if (!code) {
-    return NextResponse.redirect(new URL('/login?error=yandex_denied', req.url))
+    return NextResponse.redirect(`${origin}/login?error=yandex_denied`)
   }
 
   try {
-    // Обмен code на access_token
+    const redirectUri = `${origin}/api/auth/yandex/callback`
+
     const tokenRes = await fetch('https://oauth.yandex.ru/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -23,9 +27,8 @@ export async function GET(req: NextRequest) {
 
     if (tokenData.error) {
       console.error('Yandex token error:', tokenData)
-      return NextResponse.redirect(new URL('/login?error=yandex_token', req.url))
+      return NextResponse.redirect(`${origin}/login?error=yandex_token`)
     }
-    // Получаем информацию о пользователе
     const userRes = await fetch('https://login.yandex.ru/info?format=json', {
       headers: { Authorization: `OAuth ${tokenData.access_token}` },
     })
@@ -35,7 +38,7 @@ export async function GET(req: NextRequest) {
     const identity = yaEmail
     const token = createSession(identity)
 
-    const response = NextResponse.redirect(new URL('/dashboard', req.url))
+    const response = NextResponse.redirect(`${origin}/dashboard`)
     response.cookies.set(SESSION_COOKIE_NAME(), token, {
       httpOnly: true,
       secure: false,
@@ -47,6 +50,6 @@ export async function GET(req: NextRequest) {
     return response
   } catch (e) {
     console.error('Yandex callback error:', e)
-    return NextResponse.redirect(new URL('/login?error=yandex_failed', req.url))
+    return NextResponse.redirect(`${origin}/login?error=yandex_failed`)
   }
 }

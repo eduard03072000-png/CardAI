@@ -7,17 +7,13 @@ ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 ssh.connect('198.13.184.39', username='root', password='Alcodome99')
 
 cmds = [
-    'echo "" >> /var/www/cardai/.env.local',
-    'echo "# Yandex OAuth" >> /var/www/cardai/.env.local',
-    'echo "YANDEX_CLIENT_ID=74e4cdedfd1d40bfb61d1eec1c623b94" >> /var/www/cardai/.env.local',
-    'echo "YANDEX_CLIENT_SECRET=abec0398bf27490d867d761ad8834f7f" >> /var/www/cardai/.env.local',
-    'cat /var/www/cardai/.env.local',
-    'cd /var/www/cardai && pm2 restart cardai 2>&1 | tail -3',
+    'pm2 logs cardai --lines 30 --nostream 2>&1',
+    'pm2 list 2>&1 | grep cardai',
 ]
 
 for cmd in cmds:
     print(f'\n>>> {cmd}')
-    stdin, stdout, stderr = ssh.exec_command(cmd, timeout=30)
+    stdin, stdout, stderr = ssh.exec_command(cmd, timeout=15)
     out = stdout.read().decode()
     err = stderr.read().decode()
     if out: print(out)
