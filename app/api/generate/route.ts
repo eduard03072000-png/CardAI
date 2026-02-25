@@ -3,6 +3,7 @@ import { getCurrentSession } from '@/lib/session'
 import { normalizeImageDataUrl, isImageTooLarge } from '@/lib/images'
 import { addHistoryItem, countTodayGenerations } from '@/lib/history'
 import { getUserPlan } from '@/lib/plans'
+import { processAutoRenewForUser } from '@/lib/billing'
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
@@ -20,9 +21,20 @@ function buildPrompt(
   notes: string, hasImages: boolean,
   extra?: { brand?: string; color?: string; sizes?: string; material?: string; country?: string;
             price?: string; discount?: string; gender?: string; season?: string;
-            nds?: string; barcode?: string; weight?: string }
+            nds?: string; barcode?: string; weight?: string },
+  style?: { tone?: string; structure?: string; length?: 'short' | 'medium' | 'long'; keyPhrases?: string },
 ): string {
   const platformGuide = PLATFORM_PROMPTS[platform] || PLATFORM_PROMPTS.wb
+  const styleBlock = style && (style.tone || style.structure || style.length || style.keyPhrases)
+    ? `
+
+Стиль генерации:
+- Тон: ${style.tone || 'нейтральный'}
+- Структура: ${style.structure || 'классическая (выгоды → детали → характеристики)'}
+- Длина: ${style.length || 'medium'}
+- Ключевые фразы (обязательно включить по смыслу): ${style.keyPhrases || 'нет'}
+`
+    : ''
 
   return `${platformGuide}
 
@@ -34,6 +46,7 @@ function buildPrompt(
 - Характеристики: ${specs || 'не указаны'}${extra?.brand ? `\n- Бренд: ${extra.brand}` : ''}${extra?.color ? `\n- Цвет: ${extra.color}` : ''}${extra?.sizes ? `\n- Размеры: ${extra.sizes}` : ''}${extra?.material ? `\n- Материал: ${extra.material}` : ''}${extra?.country ? `\n- Страна: ${extra.country}` : ''}${extra?.price ? `\n- Цена: ${extra.price} руб${extra.discount ? ` (скидка ${extra.discount}%)` : ''}` : ''}${extra?.gender ? `\n- Пол: ${extra.gender}` : ''}${extra?.season ? `\n- Сезон: ${extra.season}` : ''}${platform === 'ozon' && extra?.nds ? `\n- НДС: ${extra.nds}` : ''}
 - Дополнительные заметки: ${notes || 'нет'}
 ${hasImages ? '- Изображения: прикреплены, учти визуальные характеристики товара' : ''}
+${styleBlock}
 
 Верни СТРОГО валидный JSON без markdown, без блоков \`\`\`, без пояснений:
 {
@@ -75,6 +88,7 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = session.email
+  await processAutoRenewForUser(userId)
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: 'GROQ_API_KEY не настроен' }, { status: 500 })
@@ -93,7 +107,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { platform, productName, specs, category, notes, images,
             brand, color, sizes, material, country, price, discount,
-            gender, season, nds, barcode, weightG } = body
+            gender, season, nds, barcode, weightG, templateStyle } = body
 
     if (!productName || !platform) {
       return NextResponse.json({ error: 'Обязательные поля не заполнены' }, { status: 400 })
@@ -119,7 +133,9 @@ export async function POST(req: NextRequest) {
 
     const hasImages = validImages.length > 0
     const prompt = buildPrompt(platform, productName, specs || '', category || '', notes || '', hasImages,
-      { brand, color, sizes, material, country, price, discount, gender, season, nds, barcode, weight: weightG })
+      { brand, color, sizes, material, country, price, discount, gender, season, nds, barcode, weight: weightG },
+      templateStyle,
+    )
 
     // Строим сообщение — с картинками или без
     let userContent: unknown
@@ -186,6 +202,9 @@ export async function POST(req: NextRequest) {
       platform,
       productName,
       category: category || '',
+      input: {
+        specs, notes, brand, color, sizes, material, country, price, discount, gender, season, nds, barcode, weightG,
+      },
       result: parsed,
     })
 

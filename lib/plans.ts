@@ -47,7 +47,7 @@ export const PLANS: Record<string, Plan> = {
 }
 
 // Какой тариф у пользователя (по умолчанию — Продавец)
-interface UserPlanEntry {
+export interface UserPlanEntry {
   planId: string
   activatedAt: string
   expiresAt: string
@@ -66,8 +66,7 @@ function writePlansDb(data: Record<string, UserPlanEntry>) {
   fs.writeFileSync(PLANS_FILE, JSON.stringify(data, null, 2))
 }
 
-export async function getUserPlan(userId: string): Promise<Plan> {
-  const db = readPlansDb()
+function resolvePlanEntry(db: Record<string, UserPlanEntry>, userId: string): UserPlanEntry | undefined {
   let entry = db[userId]
 
   // Совместимость: старые Telegram-сессии могли храниться как tg:@username,
@@ -90,6 +89,13 @@ export async function getUserPlan(userId: string): Promise<Plan> {
     }
   }
 
+  return entry
+}
+
+export async function getUserPlan(userId: string): Promise<Plan> {
+  const db = readPlansDb()
+  const entry = resolvePlanEntry(db, userId)
+
   if (!entry) return PLANS.seller // дефолт — Продавец
   // Проверяем не истёк ли тариф
   if (new Date(entry.expiresAt) < new Date()) return PLANS.seller
@@ -110,4 +116,9 @@ export async function setUserPlan(userId: string, planId: string, daysActive = 3
 
 export async function getAllUserPlans(): Promise<Record<string, UserPlanEntry>> {
   return readPlansDb()
+}
+
+export async function getUserPlanEntry(userId: string): Promise<UserPlanEntry | null> {
+  const db = readPlansDb()
+  return resolvePlanEntry(db, userId) || null
 }

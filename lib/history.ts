@@ -14,6 +14,22 @@ export interface HistoryRecord {
   platform: string
   productName: string
   category: string
+  input?: {
+    specs?: string
+    notes?: string
+    brand?: string
+    color?: string
+    sizes?: string
+    material?: string
+    country?: string
+    price?: string
+    discount?: string
+    gender?: string
+    season?: string
+    nds?: string
+    barcode?: string
+    weightG?: string
+  }
   result: {
     title: string
     description: string
@@ -47,7 +63,11 @@ function writeUserHistory(userId: string, records: HistoryRecord[]) {
 }
 
 export async function addHistoryItem(userId: string, data: {
-  platform: string; productName: string; category: string; result: HistoryRecord['result']
+  platform: string
+  productName: string
+  category: string
+  input?: HistoryRecord['input']
+  result: HistoryRecord['result']
 }): Promise<HistoryRecord> {
   const records = readUserHistory(userId)
   const record: HistoryRecord = {
@@ -56,6 +76,7 @@ export async function addHistoryItem(userId: string, data: {
     platform: data.platform,
     productName: data.productName,
     category: data.category,
+    input: data.input,
     result: data.result,
     createdAt: new Date().toISOString(),
   }
@@ -66,11 +87,33 @@ export async function addHistoryItem(userId: string, data: {
   return record
 }
 
-export async function getUserHistory(userId: string, limit = 50, maxDays?: number): Promise<HistoryRecord[]> {
+export async function getUserHistory(
+  userId: string,
+  limit = 50,
+  maxDays?: number,
+  filters?: { platform?: string; q?: string; from?: string; to?: string },
+): Promise<HistoryRecord[]> {
   let records = readUserHistory(userId)
   if (maxDays) {
     const cutoff = new Date(Date.now() - maxDays * 24 * 60 * 60 * 1000)
     records = records.filter(r => new Date(r.createdAt) >= cutoff)
+  }
+  if (filters?.platform) {
+    records = records.filter((r) => r.platform === filters.platform)
+  }
+  if (filters?.q) {
+    const q = filters.q.toLowerCase()
+    records = records.filter((r) =>
+      `${r.productName} ${r.result?.title || ''} ${r.category}`.toLowerCase().includes(q),
+    )
+  }
+  if (filters?.from) {
+    const fromTs = new Date(filters.from).getTime()
+    if (!Number.isNaN(fromTs)) records = records.filter((r) => new Date(r.createdAt).getTime() >= fromTs)
+  }
+  if (filters?.to) {
+    const toTs = new Date(filters.to).getTime()
+    if (!Number.isNaN(toTs)) records = records.filter((r) => new Date(r.createdAt).getTime() <= toTs + (24 * 60 * 60 * 1000 - 1))
   }
   return records.slice(0, limit)
 }

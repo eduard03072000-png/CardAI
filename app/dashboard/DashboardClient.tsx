@@ -9,8 +9,62 @@ type Tab = 'result' | 'seo' | 'variants'
 type Section = 'generator' | 'history' | 'plans'
 
 interface PlanInfo { id: string; name: string; dailyLimit: number; historyDays: number }
-interface ServerHistoryItem { id: string; platform: string; productName: string; category: string; result: GenerateResult; createdAt: string }
+interface ServerHistoryItem {
+  id: string
+  platform: string
+  productName: string
+  category: string
+  input?: {
+    specs?: string
+    notes?: string
+    brand?: string
+    color?: string
+    sizes?: string
+    material?: string
+    country?: string
+    price?: string
+    discount?: string
+    gender?: string
+    season?: string
+    nds?: string
+    barcode?: string
+    weightG?: string
+  }
+  result: GenerateResult
+  createdAt: string
+}
 interface TeamMember { id: string; email: string; role: 'admin' | 'editor'; status: 'active'; createdAt: string }
+interface CardTemplate {
+  id: string
+  name: string
+  tone: string
+  structure: string
+  length: 'short' | 'medium' | 'long'
+  keyPhrases: string
+}
+interface SubscriptionCabinet {
+  plan: {
+    id: string
+    name: string
+    price: number
+    dailyLimit: number
+    historyDays: number
+    platforms: string[]
+    features: string[]
+    expiresAt: string | null
+  }
+  usage: {
+    todayCount: number
+    remainingToday: number
+  }
+  subscription: {
+    status: 'active' | 'cancelled'
+    autoRenew: boolean
+    nextBillingAt: string | null
+    currentPlanId: string
+  }
+  payments: Array<{ id: string; planId: string; amount: number; type: string; createdAt: string }>
+}
 
 const STEPS = ['Анализ фотографий', 'Распознавание характеристик', 'Подбор ключевых слов', 'Генерация описания', 'SEO-оптимизация']
 
@@ -121,26 +175,50 @@ export default function DashboardClient({ phone }: { phone: string }) {
   const [planInfo, setPlanInfo] = useState<PlanInfo>({ id: 'seller', name: 'Продавец', dailyLimit: 5, historyDays: 0 })
   const [todayCount, setTodayCount] = useState(0)
   const [addedFeedback, setAddedFeedback] = useState(false)
+  const [templates, setTemplates] = useState<CardTemplate[]>([])
+  const [templateName, setTemplateName] = useState('')
+  const [templateStyle, setTemplateStyle] = useState<{ tone: string; structure: string; length: 'short' | 'medium' | 'long'; keyPhrases: string }>({
+    tone: '',
+    structure: '',
+    length: 'medium',
+    keyPhrases: '',
+  })
+  const [batchCsvFile, setBatchCsvFile] = useState<File | null>(null)
+  const [batchRunning, setBatchRunning] = useState(false)
+  const [batchProgress, setBatchProgress] = useState({ total: 0, processed: 0, success: 0, failed: 0 })
+  const [subscriptionData, setSubscriptionData] = useState<SubscriptionCabinet | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const setF = (updates: Partial<ProductForm>) => setForm(prev => ({ ...prev, ...updates }))
 
-  // ── Load history & plan info on mount ─────────────────────────
-  useEffect(() => {
+  async function loadAccountData() {
     if (!phone) return
-    fetch('/api/history').then(r => r.json()).then(data => {
-      if (data.ok) {
-        setServerHistory(data.history || [])
-        setPlanInfo(data.plan || planInfo)
-        setTodayCount(data.todayCount || 0)
-        // Конвертируем серверную историю в формат UI
-        setHistory((data.history || []).map((h: ServerHistoryItem) => ({
-          id: h.id, platform: h.platform as Platform,
-          title: h.result?.title || h.productName,
-          date: new Date(h.createdAt).toLocaleDateString('ru'),
-        })))
-      }
-    }).catch(() => {})
+    const [historyRes, templatesRes, subscriptionRes] = await Promise.all([
+      fetch('/api/history'),
+      fetch('/api/templates'),
+      fetch('/api/subscription'),
+    ])
+    const historyData = await historyRes.json().catch(() => ({}))
+    if (historyData.ok) {
+      setServerHistory(historyData.history || [])
+      setPlanInfo(historyData.plan || planInfo)
+      setTodayCount(historyData.todayCount || 0)
+      setHistory((historyData.history || []).map((h: ServerHistoryItem) => ({
+        id: h.id,
+        platform: h.platform as Platform,
+        title: h.result?.title || h.productName,
+        date: new Date(h.createdAt).toLocaleDateString('ru'),
+      })))
+    }
+    const templatesData = await templatesRes.json().catch(() => ({}))
+    if (templatesData.ok) setTemplates(templatesData.templates || [])
+    const subscriptionDataRes = await subscriptionRes.json().catch(() => ({}))
+    if (subscriptionDataRes.ok) setSubscriptionData(subscriptionDataRes)
+  }
+
+  // ── Load data on mount ────────────────────────────────────────
+  useEffect(() => {
+    loadAccountData().catch(() => {})
   }, [phone])
 
   // ── Images ────────────────────────────────────────────────────
@@ -174,6 +252,7 @@ export default function DashboardClient({ phone }: { phone: string }) {
           gender: form.gender, season: form.season, nds: form.nds,
           barcode: form.barcode, weightG: form.weightG,
           images: images.map(i => i.dataUrl),
+          templateStyle,
         }),
       })
       const data = await res.json()
@@ -188,6 +267,109 @@ export default function DashboardClient({ phone }: { phone: string }) {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Ошибка')
     } finally { setLoading(false); setStep(-1) }
+  }
+
+  async function saveTemplate() {
+    const name = templateName.trim()
+    if (!name) {
+      setError('Введите название шаблона')
+      return
+    }
+    const res = await fetch('/api/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, ...templateStyle }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(data.error || 'Не удалось сохранить шаблон')
+      return
+    }
+    setTemplateName('')
+    setTemplates((prev) => [data.template, ...prev])
+  }
+
+  function applyTemplate(tplId: string) {
+    const tpl = templates.find((t) => t.id === tplId)
+    if (!tpl) return
+    setTemplateStyle({
+      tone: tpl.tone || '',
+      structure: tpl.structure || '',
+      length: tpl.length || 'medium',
+      keyPhrases: tpl.keyPhrases || '',
+    })
+  }
+
+  function parseCsv(content: string): Array<Record<string, string>> {
+    const lines = content.replace(/\r/g, '').split('\n').filter(Boolean)
+    if (lines.length < 2) return []
+    const split = (line: string) => line.split(',').map((v) => v.trim().replace(/^"(.*)"$/, '$1'))
+    const headers = split(lines[0]).map((h) => h.toLowerCase())
+    return lines.slice(1).map((line) => {
+      const cells = split(line)
+      const row: Record<string, string> = {}
+      headers.forEach((h, i) => { row[h] = cells[i] || '' })
+      return row
+    })
+  }
+
+  async function runBatchFromCsv() {
+    if (!batchCsvFile) return
+    const text = await batchCsvFile.text()
+    const rows = parseCsv(text)
+    if (rows.length === 0) {
+      setError('CSV пуст или неверный формат')
+      return
+    }
+
+    setBatchRunning(true)
+    setBatchProgress({ total: rows.length, processed: 0, success: 0, failed: 0 })
+    setError('')
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]
+      const payload = {
+        platform: (row.platform || platform || 'wb').toLowerCase(),
+        productName: row.productname || row.product_name || '',
+        category: row.category || '',
+        specs: row.specs || '',
+        notes: row.notes || '',
+        brand: row.brand || '',
+        color: row.color || '',
+        sizes: row.sizes || '',
+        material: row.material || '',
+        country: row.country || '',
+        price: row.price || '',
+        discount: row.discount || '',
+        gender: row.gender || '',
+        season: row.season || '',
+        nds: row.nds || '',
+        barcode: row.barcode || '',
+        weightG: row.weightg || '',
+        images: [],
+        templateStyle,
+      }
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Ошибка генерации')
+        setQueue((prev) => [...prev, {
+          id: Date.now() + i,
+          platform: payload.platform as Platform,
+          form: { ...DEFAULT_FORM, ...payload, productName: payload.productName } as ProductForm,
+          result: data.data,
+        }])
+        setBatchProgress((prev) => ({ ...prev, processed: prev.processed + 1, success: prev.success + 1 }))
+      } catch {
+        setBatchProgress((prev) => ({ ...prev, processed: prev.processed + 1, failed: prev.failed + 1 }))
+      }
+    }
+    setBatchRunning(false)
+    loadAccountData().catch(() => {})
   }
 
   function loadDemo() {
@@ -247,18 +429,44 @@ export default function DashboardClient({ phone }: { phone: string }) {
   const blurBorder = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => (e.target.style.borderColor = '#2a2a3d')
 
   // ── PLANS section ─────────────────────────────────────────────
-  if (section === 'plans') return <PlansView phone={phone} planInfo={planInfo} onBack={() => setSection('generator')} onLogout={logout} />
+  if (section === 'plans') return <PlansView phone={phone} planInfo={planInfo} onBack={() => setSection('generator')} onLogout={logout} subscriptionData={subscriptionData} onPlanChanged={loadAccountData} />
 
   // ── HISTORY section ───────────────────────────────────────────
   if (section === 'history') return (
-    <HistoryView phone={phone} history={history} onBack={() => setSection('generator')}
+    <HistoryView phone={phone} history={history} records={serverHistory} onBack={() => setSection('generator')}
       onDelete={id => {
         setHistory(prev => prev.filter(i => i.id !== id))
         // Удаляем на сервере если это серверная запись (строковый id)
         if (typeof id === 'string') {
           fetch(`/api/history?id=${id}`, { method: 'DELETE' }).catch(() => {})
         }
-      }} onLogout={logout} />
+      }}
+      onReuse={(item) => {
+        setPlatform(item.platform as Platform)
+        setForm((prev) => ({
+          ...prev,
+          productName: item.productName || prev.productName,
+          category: item.category || prev.category,
+          specs: item.input?.specs || prev.specs,
+          notes: item.input?.notes || prev.notes,
+          brand: item.input?.brand || prev.brand,
+          color: item.input?.color || prev.color,
+          sizes: item.input?.sizes || prev.sizes,
+          material: item.input?.material || prev.material,
+          country: item.input?.country || prev.country,
+          price: item.input?.price || prev.price,
+          discount: item.input?.discount || prev.discount,
+          gender: item.input?.gender || prev.gender,
+          season: item.input?.season || prev.season,
+          nds: item.input?.nds || prev.nds,
+          barcode: item.input?.barcode || prev.barcode,
+          weightG: item.input?.weightG || prev.weightG,
+        }))
+        setResult(item.result)
+        setTab('result')
+        setSection('generator')
+      }}
+      onLogout={logout} />
   )
 
   // ── GENERATOR section ─────────────────────────────────────────
@@ -515,6 +723,29 @@ export default function DashboardClient({ phone }: { phone: string }) {
                 placeholder="Целевая аудитория, УТП..." onFocus={focusBorder} onBlur={blurBorder} />
             </div>
 
+            {/* Шаблон стиля */}
+            <div style={{ ...field, background: '#161622', border: '1px solid #2a2a3d', borderRadius: 12, padding: 12 }}>
+              <label style={{ ...lbl, marginBottom: 10 }}>Шаблон карточки (мой стиль)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                <input style={inp} value={templateStyle.tone} onChange={(e) => setTemplateStyle((p) => ({ ...p, tone: e.target.value }))} placeholder="Тон: экспертный / дружелюбный..." />
+                <select style={{ ...inp, appearance: 'none' }} value={templateStyle.length} onChange={(e) => setTemplateStyle((p) => ({ ...p, length: e.target.value as 'short' | 'medium' | 'long' }))}>
+                  <option value="short">Коротко</option>
+                  <option value="medium">Средне</option>
+                  <option value="long">Подробно</option>
+                </select>
+              </div>
+              <input style={{ ...inp, marginBottom: 8 }} value={templateStyle.structure} onChange={(e) => setTemplateStyle((p) => ({ ...p, structure: e.target.value }))} placeholder="Структура: выгоды -> характеристики -> призыв" />
+              <input style={{ ...inp, marginBottom: 8 }} value={templateStyle.keyPhrases} onChange={(e) => setTemplateStyle((p) => ({ ...p, keyPhrases: e.target.value }))} placeholder="Ключевые фразы через запятую" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8 }}>
+                <input style={inp} value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="Название шаблона" />
+                <button onClick={saveTemplate} type="button" style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.35)', borderRadius: 8, color: '#a78bfa', padding: '0 10px', fontFamily: 'inherit', cursor: 'pointer' }}>Сохранить</button>
+                <select style={{ ...inp, minWidth: 160 }} onChange={(e) => applyTemplate(e.target.value)} defaultValue="">
+                  <option value="" disabled>Выбрать шаблон</option>
+                  {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+            </div>
+
             {/* Счётчик лимита */}
             {phone && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, padding: '10px 14px', background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 10 }}>
@@ -741,6 +972,36 @@ export default function DashboardClient({ phone }: { phone: string }) {
                 </div>
               </div>
             )}
+
+            {/* Пакетная генерация CSV */}
+            <div style={{ marginTop: 12, background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 14, padding: 12 }}>
+              <div style={{ fontSize: 12, color: '#a0a0c0', marginBottom: 8 }}>Пакетная генерация из CSV</div>
+              <div style={{ fontSize: 12, color: '#7070a0', marginBottom: 8, lineHeight: 1.5 }}>
+                Загрузите CSV, где <strong style={{ color: '#d0d0e8' }}>1 строка = 1 товар</strong>. Для каждой строки мы запустим генерацию карточки и добавим успешные результаты в очередь экспорта.
+              </div>
+              <div style={{ fontSize: 11, color: '#8a8ab0', marginBottom: 8 }}>
+                Минимум колонок: <code>platform</code>, <code>productName</code>. Дополнительно можно передать: <code>category</code>, <code>specs</code>, <code>notes</code>, <code>price</code>, <code>brand</code> и другие поля формы.
+              </div>
+              <input type="file" accept=".csv,text/csv" onChange={(e) => setBatchCsvFile(e.target.files?.[0] || null)} style={{ ...inp, marginBottom: 8, padding: '8px 10px' }} />
+              <button
+                type="button"
+                disabled={!batchCsvFile || batchRunning}
+                onClick={runBatchFromCsv}
+                style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid rgba(34,211,160,0.35)', background: 'rgba(34,211,160,0.12)', color: '#22d3a0', cursor: batchCsvFile && !batchRunning ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: batchCsvFile && !batchRunning ? 1 : 0.6 }}
+              >
+                {batchRunning ? 'Идет пакетная генерация...' : 'Запустить CSV'}
+              </button>
+              {(batchProgress.total > 0 || batchRunning) && (
+                <div style={{ marginTop: 8, fontSize: 12, color: '#7070a0' }}>
+                  Обработано: {batchProgress.processed}/{batchProgress.total} · Успех: {batchProgress.success} · Ошибок: {batchProgress.failed}
+                </div>
+              )}
+              {!batchRunning && batchProgress.total > 0 && (
+                <div style={{ marginTop: 6, fontSize: 11, color: '#8a8ab0' }}>
+                  Успешные строки автоматически добавлены в блок «В экспорте», где можно скачать Excel/CSV.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1020,7 +1281,21 @@ function RBlock({ label, extra, children, onCopy, copied }: { label: string; ext
 }
 
 // ── Plans section ──────────────────────────────────────────────────────────────
-function PlansView({ phone, planInfo, onBack, onLogout }: { phone: string; planInfo: PlanInfo; onBack: () => void; onLogout: () => void }) {
+function PlansView({
+  phone,
+  planInfo,
+  onBack,
+  onLogout,
+  subscriptionData,
+  onPlanChanged,
+}: {
+  phone: string
+  planInfo: PlanInfo
+  onBack: () => void
+  onLogout: () => void
+  subscriptionData: SubscriptionCabinet | null
+  onPlanChanged: () => Promise<void>
+}) {
   const [teamOpen, setTeamOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
@@ -1030,6 +1305,7 @@ function PlansView({ phone, planInfo, onBack, onLogout }: { phone: string; planI
   const [supportMessage, setSupportMessage] = useState('')
   const [uiError, setUiError] = useState('')
   const [uiSuccess, setUiSuccess] = useState('')
+  const [billingBusy, setBillingBusy] = useState(false)
 
   async function loadTeam() {
     const res = await fetch('/api/team')
@@ -1091,14 +1367,53 @@ function PlansView({ phone, planInfo, onBack, onLogout }: { phone: string; planI
     }
   }
 
+  async function changePlan(planId: string) {
+    setUiError('')
+    setUiSuccess('')
+    setBillingBusy(true)
+    try {
+      const res = await fetch('/api/subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'switch_plan', planId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Не удалось сменить тариф')
+      setUiSuccess('Тариф успешно обновлён')
+      await onPlanChanged()
+    } catch (e: unknown) {
+      setUiError(e instanceof Error ? e.message : 'Ошибка оплаты')
+    } finally {
+      setBillingBusy(false)
+    }
+  }
+
+  async function toggleAutoRenew(enabled: boolean) {
+    setUiError('')
+    setUiSuccess('')
+    try {
+      const res = await fetch('/api/subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set_autorenew', enabled }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Не удалось обновить автопродление')
+      setUiSuccess(enabled ? 'Автопродление включено' : 'Автопродление отключено')
+      await onPlanChanged()
+    } catch (e: unknown) {
+      setUiError(e instanceof Error ? e.message : 'Ошибка')
+    }
+  }
+
   const PLANS = [
-    { emoji: '🛒', name: 'Продавец', price: '690', tag: 'Начни продавать с AI', btn: 'Подключить →', btnType: 'starter' as const, popular: false,
+    { id: 'seller', emoji: '🛒', name: 'Продавец', price: '690', tag: 'Начни продавать с AI', btn: 'Подключить →', btnType: 'starter' as const, popular: false,
       features: [{ t: '5 карточек в день', ok: true }, { t: 'WB + Ozon', ok: true }, { t: 'Excel + CSV экспорт', ok: true }, { t: 'Базовый SEO-анализ', ok: true }, { t: 'Email-поддержка', ok: true }, { t: 'История 7 дней', ok: true }, { t: '3 варианта заголовков', ok: false }, { t: 'Анализ фотографий AI', ok: false }] },
-    { emoji: '🏬', name: 'Магазин', price: '1 490', tag: 'Когда товаров уже много', btn: 'Открыть магазин →', btnType: 'pro' as const, popular: true,
+    { id: 'shop', emoji: '🏬', name: 'Магазин', price: '1 490', tag: 'Когда товаров уже много', btn: 'Открыть магазин →', btnType: 'pro' as const, popular: true,
       features: [{ t: '20 карточек в день', ok: true }, { t: 'WB + Ozon + Авито', ok: true }, { t: 'Excel + CSV экспорт', ok: true }, { t: 'Продвинутый SEO-анализ', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 30 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: false }] },
-    { emoji: '🏭', name: 'Склад', price: '3 490', tag: 'Масштабируй продажи', btn: 'Арендовать склад →', btnType: 'team' as const, popular: false,
+    { id: 'warehouse', emoji: '🏭', name: 'Склад', price: '3 490', tag: 'Масштабируй продажи', btn: 'Арендовать склад →', btnType: 'team' as const, popular: false,
       features: [{ t: '100 карточек в день', ok: true }, { t: 'Все платформы', ok: true }, { t: 'Excel/CSV/JSON экспорт', ok: true }, { t: 'SEO-анализ + рекомендации', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 90 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: true }] },
-    { emoji: '🌐', name: 'Сеть', price: '6 990', tag: 'Для команд и агентств', btn: 'Запустить сеть →', btnType: 'enterprise' as const, popular: false,
+    { id: 'network', emoji: '🌐', name: 'Сеть', price: '6 990', tag: 'Для команд и агентств', btn: 'Запустить сеть →', btnType: 'enterprise' as const, popular: false,
       features: [{ t: 'Безлимит карточек', ok: true }, { t: 'Все платформы', ok: true }, { t: 'Все форматы экспорта', ok: true }, { t: 'SEO-анализ и рекомендации', ok: true }, { t: 'До 10 сотрудников', ok: true }, { t: 'Окно поддержки в кабинете', ok: true }, { t: 'История 12 месяцев', ok: true }, { t: 'Приоритетная поддержка', ok: true }] },
   ]
 
@@ -1143,6 +1458,37 @@ function PlansView({ phone, planInfo, onBack, onLogout }: { phone: string; planI
           {uiError && <div style={{ color: '#ff4d6d', fontSize: 12, marginBottom: 6 }}>{uiError}</div>}
           {uiSuccess && <div style={{ color: '#22d3a0', fontSize: 12, marginBottom: 6 }}>{uiSuccess}</div>}
         </div>
+        {subscriptionData && (
+          <div style={{ marginBottom: 16, background: '#12121a', border: '1px solid #2a2a3d', borderRadius: 16, padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div style={{ fontSize: 13, color: '#f0f0f8' }}>
+                Подписка: {subscriptionData.plan.name} · осталось сегодня: <strong style={{ color: '#22d3a0' }}>{subscriptionData.usage.remainingToday}</strong>
+              </div>
+              <button
+                onClick={() => toggleAutoRenew(!subscriptionData.subscription.autoRenew)}
+                style={{ background: 'none', border: '1px solid #2a2a3d', borderRadius: 8, color: '#a0a0c0', padding: '6px 10px', fontFamily: 'inherit', cursor: 'pointer' }}
+              >
+                {subscriptionData.subscription.autoRenew ? 'Отключить автопродление' : 'Включить автопродление'}
+              </button>
+            </div>
+            <div style={{ fontSize: 12, color: '#7070a0', marginBottom: 8 }}>
+              Следующее списание: {subscriptionData.subscription.nextBillingAt ? new Date(subscriptionData.subscription.nextBillingAt).toLocaleString('ru') : 'не запланировано'}
+            </div>
+            <div style={{ fontSize: 12, color: '#a0a0c0', marginBottom: 8 }}>
+              Что входит: {subscriptionData.plan.features.join(', ')}
+            </div>
+            <div style={{ maxHeight: 130, overflowY: 'auto', borderTop: '1px solid #1c1c28', paddingTop: 8 }}>
+              {subscriptionData.payments.length === 0 ? (
+                <div style={{ fontSize: 12, color: '#7070a0' }}>История оплат пока пустая</div>
+              ) : subscriptionData.payments.map((p) => (
+                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#a0a0c0', marginBottom: 4 }}>
+                  <span>{new Date(p.createdAt).toLocaleString('ru')} · {p.type === 'renewal' ? 'Продление' : 'Оплата'}</span>
+                  <span>{p.amount} ₽</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 40 }}>
           {PLANS.map(plan => (
             <div key={plan.name} style={{ background: plan.btnType === 'pro' ? 'linear-gradient(145deg,#1a0f2e,#12121a)' : plan.btnType === 'enterprise' ? 'linear-gradient(145deg,#0f1f1a,#12121a)' : '#12121a', border: `1px solid ${plan.btnType === 'pro' ? 'rgba(124,58,237,0.4)' : plan.btnType === 'team' ? 'rgba(34,211,160,0.2)' : plan.btnType === 'enterprise' ? 'rgba(255,199,0,0.25)' : '#2a2a3d'}`, borderRadius: 20, padding: '28px 22px', position: 'relative', overflow: 'hidden', boxShadow: plan.btnType === 'pro' ? '0 0 40px rgba(124,58,237,0.1)' : 'none' }}>
@@ -1164,10 +1510,11 @@ function PlansView({ phone, planInfo, onBack, onLogout }: { phone: string; planI
                   </li>
                 ))}
               </ul>
-              <button onClick={() => alert('Оплата будет доступна в релизе 🚀')}
+              <button onClick={() => changePlan(plan.id)}
+                disabled={billingBusy}
                 style={{ width: '100%', padding: '13px 20px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, letterSpacing: -0.3, transition: 'all 0.2s', ...(plan.btnType === 'starter' ? { background: '#1c1c28', border: '1px solid #2a2a3d', color: '#f0f0f8' } : plan.btnType === 'pro' ? { background: 'linear-gradient(135deg,#ff4d6d,#7c3aed)', border: 'none', color: 'white' } : plan.btnType === 'enterprise' ? { background: 'linear-gradient(135deg,#ffc700,#ff8c00)', border: 'none', color: '#0a0a0f' } : { background: 'rgba(34,211,160,0.12)', border: '1px solid rgba(34,211,160,0.4)', color: '#22d3a0' }) }}
                 className="font-unbounded font-bold">
-                {plan.btn}
+                {planInfo.id === plan.id ? 'Текущий тариф' : billingBusy ? 'Обработка...' : plan.btn}
               </button>
             </div>
           ))}
@@ -1237,7 +1584,42 @@ function PlansView({ phone, planInfo, onBack, onLogout }: { phone: string; planI
 }
 
 // ── History section ────────────────────────────────────────────────────────────
-function HistoryView({ phone, history, onBack, onDelete, onLogout }: { phone: string; history: HistoryItem[]; onBack: () => void; onDelete: (id: number | string) => void; onLogout: () => void }) {
+function HistoryView({
+  phone,
+  history,
+  records,
+  onBack,
+  onDelete,
+  onReuse,
+  onLogout,
+}: {
+  phone: string
+  history: HistoryItem[]
+  records: ServerHistoryItem[]
+  onBack: () => void
+  onDelete: (id: number | string) => void
+  onReuse: (item: ServerHistoryItem) => void
+  onLogout: () => void
+}) {
+  const [platformFilter, setPlatformFilter] = useState<'all' | 'wb' | 'ozon' | 'avito'>('all')
+  const [query, setQuery] = useState('')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+
+  const filteredIds = new Set(
+    records
+      .filter((r) => platformFilter === 'all' || r.platform === platformFilter)
+      .filter((r) => {
+        if (!query.trim()) return true
+        const q = query.trim().toLowerCase()
+        return `${r.productName} ${r.result?.title || ''} ${r.category}`.toLowerCase().includes(q)
+      })
+      .filter((r) => !fromDate || new Date(r.createdAt) >= new Date(fromDate))
+      .filter((r) => !toDate || new Date(r.createdAt) <= new Date(`${toDate}T23:59:59`))
+      .map((r) => r.id),
+  )
+  const visible = history.filter((h) => typeof h.id !== 'string' || filteredIds.has(h.id))
+
   return (
     <div style={{ background: '#0a0a0f', minHeight: '100vh' }}>
       <header style={{ display: 'flex', alignItems: 'center', padding: '0 32px', height: 60, borderBottom: '1px solid #2a2a3d', position: 'sticky', top: 0, background: '#0a0a0f', zIndex: 100 }}>
@@ -1251,8 +1633,19 @@ function HistoryView({ phone, history, onBack, onDelete, onLogout }: { phone: st
         <div style={{ marginBottom: 40 }}>
           <div style={{ display: 'inline-block', background: 'rgba(255,77,109,0.12)', border: '1px solid rgba(255,77,109,0.3)', color: '#ff4d6d', fontSize: 11, fontWeight: 500, letterSpacing: 2, textTransform: 'uppercase', padding: '6px 16px', borderRadius: 20, marginBottom: 20 }}>📋 История</div>
           <h1 className="font-unbounded font-black" style={{ fontSize: 'clamp(28px,4vw,44px)', letterSpacing: -2 }}>Твои карточки</h1>
+          <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '120px 1fr 140px 140px', gap: 8 }}>
+            <select value={platformFilter} onChange={(e) => setPlatformFilter(e.target.value as 'all' | 'wb' | 'ozon' | 'avito')} style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, color: '#f0f0f8', padding: '8px 10px', fontFamily: 'inherit' }}>
+              <option value="all">Все</option>
+              <option value="wb">WB</option>
+              <option value="ozon">Ozon</option>
+              <option value="avito">Avito</option>
+            </select>
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по товару/названию" style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, color: '#f0f0f8', padding: '8px 10px', fontFamily: 'inherit' }} />
+            <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, color: '#f0f0f8', padding: '8px 10px', fontFamily: 'inherit' }} />
+            <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, color: '#f0f0f8', padding: '8px 10px', fontFamily: 'inherit' }} />
+          </div>
         </div>
-        {history.length === 0 ? (
+        {visible.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, textAlign: 'center', color: '#7070a0' }}>
             <div style={{ fontSize: 56, opacity: 0.25, marginBottom: 16 }}>📋</div>
             <p className="font-unbounded font-bold" style={{ fontSize: 16, color: '#f0f0f8' }}>Пока ничего нет</p>
@@ -1260,9 +1653,10 @@ function HistoryView({ phone, history, onBack, onDelete, onLogout }: { phone: st
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {history.map(item => {
+            {visible.map(item => {
               const platColor = item.platform === 'wb' ? '#cb11ab' : item.platform === 'ozon' ? '#4d8fff' : '#ffc700'
               const platBg = item.platform === 'wb' ? 'rgba(203,17,171,0.12)' : item.platform === 'ozon' ? 'rgba(0,91,255,0.1)' : 'rgba(255,199,0,0.1)'
+              const record = typeof item.id === 'string' ? records.find((r) => r.id === item.id) : null
               return (
                 <div key={item.id} style={{ background: '#12121a', border: '1px solid #2a2a3d', borderRadius: 14, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -1270,6 +1664,9 @@ function HistoryView({ phone, history, onBack, onDelete, onLogout }: { phone: st
                     <div style={{ fontSize: 12, color: '#7070a0', marginTop: 3 }}>{item.date}</div>
                   </div>
                   <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: platBg, color: platColor, border: `1px solid ${platColor}30`, flexShrink: 0 }}>{item.platform.toUpperCase()}</span>
+                  {record && (
+                    <button onClick={() => onReuse(record)} style={{ background: 'none', border: '1px solid #2a2a3d', borderRadius: 8, padding: '5px 10px', color: '#22d3a0', fontSize: 12, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>Доработать</button>
+                  )}
                   <button onClick={() => onDelete(item.id)} style={{ background: 'none', border: '1px solid #2a2a3d', borderRadius: 8, padding: '5px 12px', color: '#7070a0', fontSize: 12, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>Удалить</button>
                 </div>
               )
