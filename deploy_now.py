@@ -7,13 +7,14 @@ ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 ssh.connect('198.13.184.39', username='root', password='Alcodome99')
 
 cmds = [
-    'cat /tmp/cardai-dev/users.json 2>&1',
-    'pm2 logs cardai --lines 15 --nostream 2>&1 | grep -i "email\|resend\|error\|код"',
+    'cd /var/www/cardai && git pull origin main 2>&1',
+    'cd /var/www/cardai && npm run build 2>&1 | tail -5',
+    'cd /var/www/cardai && pm2 restart cardai 2>&1 | tail -3',
 ]
 
 for cmd in cmds:
     print(f'\n>>> {cmd[:80]}')
-    stdin, stdout, stderr = ssh.exec_command(cmd, timeout=15)
+    stdin, stdout, stderr = ssh.exec_command(cmd, timeout=120)
     out = stdout.read().decode()
     err = stderr.read().decode()
     if out: print(out)
