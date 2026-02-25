@@ -1,10 +1,11 @@
 import { readUsers } from '@/lib/store'
 import { PLANS, getAllUserPlans } from '@/lib/plans'
+import { getSupportTickets } from '@/lib/support'
 
 export const dynamic = 'force-dynamic'
 
 interface AdminUsersPageProps {
-  searchParams?: Promise<{ key?: string; updated?: string }>
+  searchParams?: Promise<{ key?: string; updated?: string; ticketUpdated?: string }>
 }
 
 export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
@@ -35,6 +36,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
 
   const users = readUsers()
   const userPlans = await getAllUserPlans()
+  const tickets = getSupportTickets(30)
   const nowTs = Date.now()
   const deduped = new Map<string, (typeof users)[string]>()
 
@@ -190,6 +192,50 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
           </form>
           <div style={{ marginTop: 8, fontSize: 11, color: '#7070a0' }}>Срок подписки указывается в днях.</div>
           {params.updated === '1' && <div style={{ marginTop: 6, fontSize: 12, color: '#22d3a0' }}>Подписка обновлена</div>}
+        </div>
+
+        <div style={{ marginTop: 16, borderRadius: 16, border: '1px solid #2a2a3d', background: '#12121a', overflow: 'hidden' }}>
+          <div style={{ padding: '12px 14px', borderBottom: '1px solid #2a2a3d', fontSize: 13 }}>
+            Входящие обращения поддержки: <span style={{ color: '#f0f0f8' }}>{tickets.length}</span>
+          </div>
+          {tickets.length === 0 ? (
+            <div style={{ padding: 14, color: '#7070a0', fontSize: 12 }}>Пока обращений нет.</div>
+          ) : (
+            <div style={{ maxHeight: 340, overflowY: 'auto' }}>
+              {tickets.map((t, idx) => (
+                <div key={t.id} style={{ padding: '10px 14px', borderTop: idx === 0 ? 'none' : '1px solid #1c1c28' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ fontSize: 12, color: '#f0f0f8' }}>{t.subject}</div>
+                      <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 999, border: `1px solid ${t.status === 'done' ? 'rgba(34,211,160,0.35)' : 'rgba(255,199,0,0.35)'}`, color: t.status === 'done' ? '#22d3a0' : '#ffc700', background: t.status === 'done' ? 'rgba(34,211,160,0.08)' : 'rgba(255,199,0,0.08)' }}>
+                        {t.status === 'done' ? 'Выполнено' : 'Новое'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#7070a0' }}>{new Date(t.createdAt).toLocaleString('ru')}</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#a0a0c0', marginBottom: 6 }}>{t.email}</div>
+                  <div style={{ fontSize: 12, color: '#d0d0e8', whiteSpace: 'pre-wrap' }}>{t.message}</div>
+                  <form method="POST" action="/api/admin/support" style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                    {key && <input type="hidden" name="key" value={providedKey} />}
+                    <input type="hidden" name="ticketId" value={t.id} />
+                    <input type="hidden" name="action" value={t.status === 'done' ? 'new' : 'done'} />
+                    <button type="submit" style={{ background: 'none', border: '1px solid #2a2a3d', borderRadius: 8, color: '#22d3a0', padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11 }}>
+                      {t.status === 'done' ? '↩ Вернуть в новые' : '✅ Выполнено'}
+                    </button>
+                  </form>
+                  <form method="POST" action="/api/admin/support" style={{ marginTop: 6, display: 'flex', gap: 8 }}>
+                    {key && <input type="hidden" name="key" value={providedKey} />}
+                    <input type="hidden" name="ticketId" value={t.id} />
+                    <input type="hidden" name="action" value="delete" />
+                    <button type="submit" style={{ background: 'none', border: '1px solid #2a2a3d', borderRadius: 8, color: '#ff4d6d', padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11 }}>
+                      🗑 Очистить
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
+          {params.ticketUpdated === '1' && <div style={{ padding: '8px 14px', borderTop: '1px solid #2a2a3d', fontSize: 12, color: '#22d3a0' }}>Обращение обновлено</div>}
         </div>
 
         {key && (

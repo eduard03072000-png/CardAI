@@ -11,7 +11,8 @@ export interface SupportTicket {
   subject: string
   message: string
   createdAt: string
-  status: 'new'
+  status: 'new' | 'done'
+  doneAt?: string
 }
 
 function readTickets(): SupportTicket[] {
@@ -27,6 +28,10 @@ function readTickets(): SupportTicket[] {
 function writeTickets(items: SupportTicket[]) {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
   fs.writeFileSync(SUPPORT_FILE, JSON.stringify(items, null, 2))
+}
+
+export function getSupportTickets(limit = 100): SupportTicket[] {
+  return readTickets().slice(0, limit)
 }
 
 export function createSupportTicket(input: {
@@ -53,4 +58,25 @@ export function createSupportTicket(input: {
   items.unshift(ticket)
   writeTickets(items)
   return ticket
+}
+
+export function setSupportTicketStatus(ticketId: string, status: SupportTicket['status']): boolean {
+  const items = readTickets()
+  const idx = items.findIndex((t) => t.id === ticketId)
+  if (idx === -1) return false
+  items[idx] = {
+    ...items[idx],
+    status,
+    doneAt: status === 'done' ? new Date().toISOString() : undefined,
+  }
+  writeTickets(items)
+  return true
+}
+
+export function deleteSupportTicket(ticketId: string): boolean {
+  const items = readTickets()
+  const next = items.filter((t) => t.id !== ticketId)
+  if (next.length === items.length) return false
+  writeTickets(next)
+  return true
 }

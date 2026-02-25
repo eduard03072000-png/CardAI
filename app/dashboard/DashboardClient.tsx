@@ -806,12 +806,70 @@ export default function DashboardClient({ phone }: { phone: string }) {
         </div>
       </div>
 
+      <SupportFloatingButton />
+
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         .example-card { transition: transform 0.2s, border-color 0.2s; }
         .example-card:hover { transform: translateY(-4px) !important; border-color: rgba(255,77,109,0.35) !important; }
       `}</style>
     </div>
+  )
+}
+
+function SupportFloatingButton() {
+  const [open, setOpen] = useState(false)
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const [status, setStatus] = useState('')
+  const [sending, setSending] = useState(false)
+
+  async function submit() {
+    setStatus('')
+    setSending(true)
+    try {
+      const res = await fetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, message }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Не удалось отправить обращение')
+      setStatus(`Отправлено (#${data.ticketId})`)
+      setSubject('')
+      setMessage('')
+      setOpen(false)
+    } catch (e: unknown) {
+      setStatus(e instanceof Error ? e.message : 'Ошибка отправки')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        style={{ position: 'fixed', right: 24, bottom: 24, zIndex: 140, border: 'none', borderRadius: 999, background: 'linear-gradient(135deg,#ff4d6d,#7c3aed)', color: '#fff', padding: '12px 16px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, boxShadow: '0 12px 30px rgba(0,0,0,0.4)' }}
+      >
+        💬 Поддержка
+      </button>
+      {open && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 220 }}>
+          <div style={{ width: '100%', maxWidth: 560, background: '#12121a', border: '1px solid #2a2a3d', borderRadius: 14, padding: 20 }}>
+            <div className="font-unbounded font-bold" style={{ marginBottom: 12 }}>Окно поддержки</div>
+            <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Тема обращения" style={{ width: '100%', marginBottom: 8, background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, padding: '10px 12px', color: '#f0f0f8', fontFamily: 'inherit' }} />
+            <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Опишите ваш вопрос" style={{ width: '100%', minHeight: 120, background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, padding: '10px 12px', color: '#f0f0f8', fontFamily: 'inherit', resize: 'vertical' }} />
+            {status && <div style={{ marginTop: 8, fontSize: 12, color: status.startsWith('Отправлено') ? '#22d3a0' : '#ff4d6d' }}>{status}</div>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
+              <button onClick={() => setOpen(false)} style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, padding: '8px 12px', color: '#f0f0f8', cursor: 'pointer', fontFamily: 'inherit' }}>Отмена</button>
+              <button disabled={sending} onClick={submit} style={{ background: 'linear-gradient(135deg,#22d3a0,#16a34a)', border: 'none', borderRadius: 8, padding: '8px 12px', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', opacity: sending ? 0.7 : 1 }}>{sending ? 'Отправка...' : 'Отправить'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -851,11 +909,13 @@ const EXAMPLE_CARDS = [
 
 type ExCard = typeof EXAMPLE_CARDS[0]
 function ExampleCard({ card }: { card: ExCard }) {
+  const [expanded, setExpanded] = useState(false)
   const isWb = card.platform === 'wb'
   const platColor = isWb ? '#cb11ab' : '#4d8fff'
   const platBg = isWb ? 'rgba(203,17,171,0.12)' : 'rgba(0,91,255,0.1)'
   const platBorder = isWb ? 'rgba(203,17,171,0.25)' : 'rgba(0,91,255,0.25)'
   const seoColor = card.seo >= 80 ? '#22d3a0' : card.seo >= 65 ? '#ffc700' : '#ff4d6d'
+  const canToggleDesc = card.desc.length > 120
 
   return (
     <div className="example-card" style={{ background: '#12121a', border: '1px solid #2a2a3d', borderRadius: 16, overflow: 'hidden' }}>
@@ -884,10 +944,32 @@ function ExampleCard({ card }: { card: ExCard }) {
           <span style={{ fontSize: 12, fontWeight: 600, color: '#ff4d6d', background: 'rgba(255,77,109,0.1)', padding: '2px 7px', borderRadius: 4 }}>−{card.discount}%</span>
         </div>
         {/* Desc */}
-        <div style={{ fontSize: 12.5, lineHeight: 1.6, color: '#7070a0', marginBottom: 14, whiteSpace: 'pre-line' as const, maxHeight: 120, overflow: 'hidden', position: 'relative' as const }}>
+        <div
+          style={{
+            fontSize: 12.5,
+            lineHeight: 1.6,
+            color: '#7070a0',
+            marginBottom: 8,
+            whiteSpace: 'pre-line' as const,
+            ...(expanded ? {} : {
+              display: '-webkit-box',
+              WebkitBoxOrient: 'vertical' as const,
+              WebkitLineClamp: 4,
+              overflow: 'hidden',
+            }),
+          }}
+        >
           {card.desc}
-          <div style={{ position: 'absolute' as const, bottom: 0, left: 0, right: 0, height: 32, background: 'linear-gradient(transparent,#12121a)' }} />
         </div>
+        {canToggleDesc && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            style={{ marginBottom: 14, background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', padding: 0, fontSize: 12, fontFamily: 'inherit' }}
+          >
+            {expanded ? 'Свернуть' : 'Показать полностью'}
+          </button>
+        )}
         {/* Attrs */}
         <div style={{ borderTop: '1px solid #2a2a3d', paddingTop: 12, marginBottom: 12, display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
           {card.attrs.map(([k, v]) => (
@@ -1057,12 +1139,6 @@ function PlansView({ phone, planInfo, onBack, onLogout }: { phone: string; planI
             >
               👥 Команда
             </button>
-            <button
-              onClick={() => { setUiError(''); setUiSuccess(''); setSupportOpen(true) }}
-              style={{ background: 'rgba(34,211,160,0.12)', border: '1px solid rgba(34,211,160,0.35)', borderRadius: 10, padding: '8px 14px', color: '#22d3a0', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              💬 Поддержка
-            </button>
           </div>
           {uiError && <div style={{ color: '#ff4d6d', fontSize: 12, marginBottom: 6 }}>{uiError}</div>}
           {uiSuccess && <div style={{ color: '#22d3a0', fontSize: 12, marginBottom: 6 }}>{uiSuccess}</div>}
@@ -1108,6 +1184,8 @@ function PlansView({ phone, planInfo, onBack, onLogout }: { phone: string; planI
           ))}
         </div>
       </div>
+
+      <SupportFloatingButton />
 
       {teamOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
@@ -1199,6 +1277,7 @@ function HistoryView({ phone, history, onBack, onDelete, onLogout }: { phone: st
           </div>
         )}
       </div>
+      <SupportFloatingButton />
     </div>
   )
 }

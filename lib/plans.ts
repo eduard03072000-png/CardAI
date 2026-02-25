@@ -4,6 +4,7 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
+import { readUsers } from './store'
 
 const DATA_DIR = process.env.DATA_DIR || '/tmp/cardai-dev'
 const PLANS_FILE = path.join(DATA_DIR, 'user-plans.json')
@@ -67,7 +68,28 @@ function writePlansDb(data: Record<string, UserPlanEntry>) {
 
 export async function getUserPlan(userId: string): Promise<Plan> {
   const db = readPlansDb()
-  const entry = db[userId]
+  let entry = db[userId]
+
+  // Совместимость: старые Telegram-сессии могли храниться как tg:@username,
+  // а подписка выдана на канонический tg:<telegramId>.
+  if (!entry && userId.startsWith('tg:@')) {
+    const username = userId.replace(/^tg:@/i, '').trim().toLowerCase()
+    if (username) {
+      const users = Object.values(readUsers())
+      const tgUser = users.find((u) => {
+        if (u.method !== 'telegram') return false
+        const uName = (u.meta?.username || u.display.replace(/^tg:@?/i, ''))
+          .trim()
+          .replace(/^@/, '')
+          .toLowerCase()
+        return uName === username
+      })
+      if (typeof tgUser?.meta?.telegramId === 'number') {
+        entry = db[`tg:${tgUser.meta.telegramId}`]
+      }
+    }
+  }
+
   if (!entry) return PLANS.seller // дефолт — Продавец
   // Проверяем не истёк ли тариф
   if (new Date(entry.expiresAt) < new Date()) return PLANS.seller
