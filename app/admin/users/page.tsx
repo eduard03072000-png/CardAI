@@ -1,5 +1,7 @@
 import { readUsers } from '@/lib/store'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AdminUsersPage() {
   const key = process.env.ADMIN_KEY
   // Простая защита: если ADMIN_KEY задан, требуем его через query (?key=...)
