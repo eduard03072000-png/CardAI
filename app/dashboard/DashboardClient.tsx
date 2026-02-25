@@ -885,12 +885,14 @@ function RBlock({ label, extra, children, onCopy, copied }: { label: string; ext
 // ── Plans section ──────────────────────────────────────────────────────────────
 function PlansView({ phone, onBack, onLogout }: { phone: string; onBack: () => void; onLogout: () => void }) {
   const PLANS = [
-    { emoji: '🏪', name: 'Ларёк', price: '0', tag: 'Один прилавок, один продавец', btn: 'Текущий план', btnType: 'free' as const, popular: false,
-      features: [{ t: '5 карточек в день', ok: true }, { t: '1 платформа', ok: true }, { t: 'Excel-экспорт', ok: true }, { t: 'Базовый SEO', ok: true }, { t: 'История', ok: false }, { t: 'Варианты заголовков', ok: false }, { t: 'Пакетная загрузка', ok: false }] },
+    { emoji: '🛒', name: 'Продавец', price: '690', tag: 'Начни продавать с AI', btn: 'Подключить →', btnType: 'starter' as const, popular: false,
+      features: [{ t: '5 карточек в день', ok: true }, { t: '1 платформа (WB или Ozon)', ok: true }, { t: 'Excel-экспорт', ok: true }, { t: 'Базовый SEO-анализ', ok: true }, { t: 'Email-поддержка', ok: true }, { t: '3 варианта заголовков', ok: false }, { t: 'Анализ фотографий AI', ok: false }, { t: 'Пакетная загрузка CSV', ok: false }] },
     { emoji: '🏬', name: 'Магазин', price: '1 490', tag: 'Когда товаров уже много', btn: 'Открыть магазин →', btnType: 'pro' as const, popular: true,
-      features: [{ t: '100 карточек в день', ok: true }, { t: 'WB + Ozon + Авито', ok: true }, { t: 'Excel пакетами', ok: true }, { t: 'Продвинутый SEO', ok: true }, { t: 'История карточек', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Пакетная загрузка CSV', ok: false }] },
-    { emoji: '🏭', name: 'Склад', price: '3 490', tag: 'Для тех, кто торгует оптом', btn: 'Арендовать склад →', btnType: 'team' as const, popular: false,
-      features: [{ t: 'Безлимит карточек', ok: true }, { t: 'Все платформы + API', ok: true }, { t: 'Excel/CSV/JSON', ok: true }, { t: 'SEO + А/Б тест', ok: true }, { t: 'История 6 месяцев', ok: true }, { t: 'Пакетная загрузка CSV', ok: true }, { t: 'До 5 сотрудников', ok: true }] },
+      features: [{ t: '20 карточек в день', ok: true }, { t: 'WB + Ozon + Авито', ok: true }, { t: 'Excel пакетами', ok: true }, { t: 'Продвинутый SEO-анализ', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 30 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: false }] },
+    { emoji: '🏭', name: 'Склад', price: '3 490', tag: 'Масштабируй продажи', btn: 'Арендовать склад →', btnType: 'team' as const, popular: false,
+      features: [{ t: '100 карточек в день', ok: true }, { t: 'Все платформы + API', ok: true }, { t: 'Excel/CSV/JSON экспорт', ok: true }, { t: 'SEO + А/Б тест заголовков', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 90 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: true }] },
+    { emoji: '🌐', name: 'Сеть', price: '6 990', tag: 'Для команд и агентств', btn: 'Запустить сеть →', btnType: 'enterprise' as const, popular: false,
+      features: [{ t: 'Безлимит карточек', ok: true }, { t: 'Все платформы + API', ok: true }, { t: 'Все форматы экспорта', ok: true }, { t: 'SEO + А/Б + автооптимизация', ok: true }, { t: 'До 10 сотрудников', ok: true }, { t: 'Приоритетная поддержка', ok: true }, { t: 'История 12 месяцев', ok: true }, { t: 'Персональный менеджер', ok: true }] },
   ]
 
   return (
@@ -908,9 +910,9 @@ function PlansView({ phone, onBack, onLogout }: { phone: string; onBack: () => v
           <h2 className="font-unbounded font-black" style={{ fontSize: 'clamp(28px,4vw,48px)', letterSpacing: -2, marginBottom: 12 }}>Выбери свой план</h2>
           <p style={{ color: '#7070a0', fontSize: 16 }}>Без скрытых комиссий. Отменить можно в любой момент.</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 40 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 40 }}>
           {PLANS.map(plan => (
-            <div key={plan.name} style={{ background: plan.btnType === 'pro' ? 'linear-gradient(145deg,#1a0f2e,#12121a)' : '#12121a', border: `1px solid ${plan.btnType === 'pro' ? 'rgba(124,58,237,0.4)' : plan.btnType === 'team' ? 'rgba(34,211,160,0.2)' : '#2a2a3d'}`, borderRadius: 20, padding: '32px 28px', position: 'relative', overflow: 'hidden', boxShadow: plan.btnType === 'pro' ? '0 0 40px rgba(124,58,237,0.1)' : 'none' }}>
+            <div key={plan.name} style={{ background: plan.btnType === 'pro' ? 'linear-gradient(145deg,#1a0f2e,#12121a)' : plan.btnType === 'enterprise' ? 'linear-gradient(145deg,#0f1f1a,#12121a)' : '#12121a', border: `1px solid ${plan.btnType === 'pro' ? 'rgba(124,58,237,0.4)' : plan.btnType === 'team' ? 'rgba(34,211,160,0.2)' : plan.btnType === 'enterprise' ? 'rgba(255,199,0,0.25)' : '#2a2a3d'}`, borderRadius: 20, padding: '28px 22px', position: 'relative', overflow: 'hidden', boxShadow: plan.btnType === 'pro' ? '0 0 40px rgba(124,58,237,0.1)' : 'none' }}>
               {plan.popular && <div style={{ display: 'inline-block', background: 'rgba(255,77,109,0.15)', border: '1px solid rgba(255,77,109,0.3)', color: '#ff4d6d', fontSize: 11, fontWeight: 600, padding: '5px 12px', borderRadius: 20, marginBottom: 20 }}>🔥 Берут чаще всего</div>}
               <div style={{ fontSize: 36, marginBottom: 10 }}>{plan.emoji}</div>
               <div className="font-unbounded font-black" style={{ fontSize: 22, letterSpacing: -0.5, marginBottom: 4 }}>{plan.name}</div>
@@ -929,8 +931,8 @@ function PlansView({ phone, onBack, onLogout }: { phone: string; onBack: () => v
                   </li>
                 ))}
               </ul>
-              <button onClick={() => plan.btnType !== 'free' && alert('Оплата будет доступна в релизе 🚀')}
-                style={{ width: '100%', padding: '13px 20px', borderRadius: 12, cursor: plan.btnType !== 'free' ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, letterSpacing: -0.3, transition: 'all 0.2s', ...(plan.btnType === 'free' ? { background: '#1c1c28', border: '1px solid #2a2a3d', color: '#7070a0' } : plan.btnType === 'pro' ? { background: 'linear-gradient(135deg,#ff4d6d,#7c3aed)', border: 'none', color: 'white' } : { background: 'rgba(34,211,160,0.12)', border: '1px solid rgba(34,211,160,0.4)', color: '#22d3a0' }) }}
+              <button onClick={() => alert('Оплата будет доступна в релизе 🚀')}
+                style={{ width: '100%', padding: '13px 20px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, letterSpacing: -0.3, transition: 'all 0.2s', ...(plan.btnType === 'starter' ? { background: '#1c1c28', border: '1px solid #2a2a3d', color: '#f0f0f8' } : plan.btnType === 'pro' ? { background: 'linear-gradient(135deg,#ff4d6d,#7c3aed)', border: 'none', color: 'white' } : plan.btnType === 'enterprise' ? { background: 'linear-gradient(135deg,#ffc700,#ff8c00)', border: 'none', color: '#0a0a0f' } : { background: 'rgba(34,211,160,0.12)', border: '1px solid rgba(34,211,160,0.4)', color: '#22d3a0' }) }}
                 className="font-unbounded font-bold">
                 {plan.btn}
               </button>
