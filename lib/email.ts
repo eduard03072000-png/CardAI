@@ -61,6 +61,7 @@ async function sendViaResend(email: string, subject: string, html: string): Prom
 async function sendViaSMTP(email: string, subject: string, html: string): Promise<boolean> {
   try {
     // Динамический импорт — не ломает билд если nodemailer не установлен
+    // @ts-ignore — nodemailer может быть не установлен
     const nodemailer = await import('nodemailer')
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
