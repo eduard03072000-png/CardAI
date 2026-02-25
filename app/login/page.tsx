@@ -33,9 +33,6 @@ export default function LoginPage() {
     const err = params.get('error')
     if (err) {
       const messages: Record<string, string> = {
-        vk_denied: 'Вход через VK отменён',
-        vk_token: 'Ошибка авторизации VK',
-        vk_failed: 'Не удалось войти через VK',
         yandex_denied: 'Вход через Яндекс отменён',
         yandex_token: 'Ошибка авторизации Яндекс',
         yandex_failed: 'Не удалось войти через Яндекс',
@@ -146,12 +143,6 @@ export default function LoginPage() {
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-              <a href="/api/auth/vk"
-                style={{ flex: 1, padding: '11px 6px', background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 10, color: '#4680C2', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer', textDecoration: 'none', textAlign: 'center', fontWeight: 600, transition: 'border-color 0.2s' }}
-                onMouseOver={e => (e.currentTarget.style.borderColor = '#4680C2')}
-                onMouseOut={e => (e.currentTarget.style.borderColor = '#2a2a3d')}>
-                VK ID
-              </a>
               <a href="/api/auth/yandex"
                 style={{ flex: 1, padding: '11px 6px', background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 10, color: '#FC3F1D', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer', textDecoration: 'none', textAlign: 'center', fontWeight: 600, transition: 'border-color 0.2s' }}
                 onMouseOver={e => (e.currentTarget.style.borderColor = '#FC3F1D')}
