@@ -1,8 +1,6 @@
 // Email отправка OTP кода
 // DEV_MODE=true — логирует в консоль
-// Продакшн — через SMTP (nodemailer) или Resend API
-
-import nodemailer from 'nodemailer'
+// Продакшн — через Resend API или SMTP (nodemailer)
 
 export async function sendEmailOTP(email: string, code: string): Promise<boolean> {
   const subject = `CardAI — код подтверждения: ${code}`
@@ -36,6 +34,7 @@ export async function sendEmailOTP(email: string, code: string): Promise<boolean
   console.warn('Email провайдер не настроен. Используйте DEV_MODE=true или настройте SMTP/Resend')
   return false
 }
+
 async function sendViaResend(email: string, subject: string, html: string): Promise<boolean> {
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -61,6 +60,8 @@ async function sendViaResend(email: string, subject: string, html: string): Prom
 
 async function sendViaSMTP(email: string, subject: string, html: string): Promise<boolean> {
   try {
+    // Динамический импорт — не ломает билд если nodemailer не установлен
+    const nodemailer = await import('nodemailer')
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT || 587),
@@ -71,7 +72,7 @@ async function sendViaSMTP(email: string, subject: string, html: string): Promis
       },
     })
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'CardAI <noreply@cardai.ru>',
+      from: process.env.SMTP_FROM || 'CardAI <your@gmail.com>',
       to: email,
       subject,
       html,
