@@ -5,22 +5,22 @@ export function generateOTP(): string {
   return Math.floor(1000 + Math.random() * 9000).toString()
 }
 
-export function saveOTP(phone: string, code: string): void {
+export function saveOTP(email: string, code: string): void {
   const otps = readOTPs()
-  otps[phone] = {
+  otps[email] = {
     code,
-    expires: Date.now() + 5 * 60 * 1000, // 5 минут
+    expires: Date.now() + 5 * 60 * 1000,
     attempts: 0,
   }
   writeOTPs(otps)
 }
 
-export function verifyOTP(phone: string, code: string): 'ok' | 'expired' | 'invalid' | 'too_many' {
+export function verifyOTP(email: string, code: string): 'ok' | 'expired' | 'invalid' | 'too_many' {
   const otps = readOTPs()
-  const entry = otps[phone]
+  const entry = otps[email]
   if (!entry) return 'expired'
   if (Date.now() > entry.expires) {
-    delete otps[phone]
+    delete otps[email]
     writeOTPs(otps)
     return 'expired'
   }
@@ -30,15 +30,11 @@ export function verifyOTP(phone: string, code: string): 'ok' | 'expired' | 'inva
     writeOTPs(otps)
     return 'invalid'
   }
-  delete otps[phone]
+  delete otps[email]
   writeOTPs(otps)
   return 'ok'
 }
 
-export function formatPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '')
-  if (digits.startsWith('8') && digits.length === 11) return '+7' + digits.slice(1)
-  if (digits.startsWith('7') && digits.length === 11) return '+' + digits
-  if (digits.length === 10) return '+7' + digits
-  return '+' + digits
+export function formatEmail(raw: string): string {
+  return raw.trim().toLowerCase()
 }

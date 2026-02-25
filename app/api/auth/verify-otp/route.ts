@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyOTP, formatPhone } from '@/lib/otp'
+import { verifyOTP, formatEmail } from '@/lib/otp'
 import { createSession, SESSION_COOKIE_NAME } from '@/lib/session'
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone, code } = await req.json()
-    if (!phone || !code) {
-      return NextResponse.json({ error: 'Телефон и код обязательны' }, { status: 400 })
+    const { email, code } = await req.json()
+    if (!email || !code) {
+      return NextResponse.json({ error: 'Email и код обязательны' }, { status: 400 })
     }
 
-    const normalized = formatPhone(phone)
+    const normalized = formatEmail(email)
     const result = verifyOTP(normalized, code.trim())
 
     if (result === 'expired') {
@@ -24,12 +24,12 @@ export async function POST(req: NextRequest) {
 
     const token = createSession(normalized)
 
-    const response = NextResponse.json({ ok: true, phone: normalized })
+    const response = NextResponse.json({ ok: true, email: normalized })
     response.cookies.set(SESSION_COOKIE_NAME(), token, {
       httpOnly: true,
-      secure: false, // HTTP-совместимость (нет SSL)
+      secure: false,
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60, // 30 дней
+      maxAge: 30 * 24 * 60 * 60,
       path: '/',
     })
 

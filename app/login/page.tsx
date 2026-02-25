@@ -4,25 +4,19 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import StarfieldBg from './StarfieldBg'
 
-type AuthTab = 'phone' | 'email'
 type Step = 'input' | 'otp'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [tab, setTab] = useState<AuthTab>('phone')
   const [step, setStep] = useState<Step>('input')
   const [email, setEmail] = useState('')
   const [code, setCode] = useState(['', '', '', ''])
   const [loading, setLoading] = useState(false)
-  const [telegramLoading, setTelegramLoading] = useState(false)
   const [error, setError] = useState('')
   const [devCode, setDevCode] = useState('')
   const [countdown, setCountdown] = useState(0)
   const [sentTo, setSentTo] = useState('')
 
-  const tgPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  const phoneRef = useRef<HTMLInputElement>(null)
   const codeRefs = [
     useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null),
@@ -33,36 +27,38 @@ export default function LoginPage() {
     const t = setTimeout(() => setCountdown(c => c - 1), 1000)
     return () => clearTimeout(t)
   }, [countdown])
-
+  // Проверяем URL-параметры ошибок OAuth
   useEffect(() => {
-    return () => {
-      if (tgPollRef.current) clearInterval(tgPollRef.current)
+    const params = new URLSearchParams(window.location.search)
+    const err = params.get('error')
+    if (err) {
+      const messages: Record<string, string> = {
+        vk_denied: 'Вход через VK отменён',
+        vk_token: 'Ошибка авторизации VK',
+        vk_failed: 'Не удалось войти через VK',
+        yandex_denied: 'Вход через Яндекс отменён',
+        yandex_token: 'Ошибка авторизации Яндекс',
+        yandex_failed: 'Не удалось войти через Яндекс',
+      }
+      setError(messages[err] || 'Ошибка авторизации')
     }
   }, [])
 
   async function send() {
-    const contact = tab === 'phone'
-      ? '+7' + (phoneRef.current?.value || '').replace(/\D/g, '')
-      : email
-
-    if (tab === 'phone' && contact.replace(/\D/g, '').length < 11) {
-      setError('Введи корректный номер'); return
+    if (!email.includes('@')) {
+      setError('Введите корректный email'); return
     }
-    if (tab === 'email' && !email.includes('@')) {
-      setError('Введи корректный email'); return
-    }
-
     setLoading(true); setError('')
     try {
       const res = await fetch('/api/auth/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: contact }),
+        body: JSON.stringify({ email }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       if (data.devCode) setDevCode(data.devCode)
-      setSentTo(contact)
+      setSentTo(email)
       setStep('otp')
       setCountdown(60)
       setTimeout(() => codeRefs[0].current?.focus(), 100)
@@ -72,60 +68,6 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
-
-  async function startTelegramLogin() {
-    setError('')
-    setTelegramLoading(true)
-    try {
-      const res = await fetch('/api/auth/telegram/start', {
-        method: 'POST',
-      })
-      const data = await res.json()
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || 'Не удалось запустить вход через Telegram')
-      }
-
-      const { token, botUrl } = data as { token: string; botUrl: string }
-
-      // Открываем бота: на мобильных безопаснее перейти в этом окне,
-      // чтобы браузер не посчитал это всплывающим окном.
-      if (typeof window !== 'undefined') {
-        window.location.href = botUrl
-      }
-
-      // Запускаем опрос статуса
-      if (tgPollRef.current) clearInterval(tgPollRef.current)
-      tgPollRef.current = setInterval(async () => {
-        try {
-          const pollRes = await fetch(`/api/auth/telegram/poll?token=${encodeURIComponent(token)}`)
-          const pollData = await pollRes.json()
-          if (!pollRes.ok) {
-            throw new Error(pollData.error || 'Ошибка при проверке Telegram-логина')
-          }
-          if (pollData.ok) {
-            if (tgPollRef.current) {
-              clearInterval(tgPollRef.current)
-              tgPollRef.current = null
-            }
-            router.push('/dashboard')
-          } else if (pollData.status === 'expired' || pollData.status === 'not_found') {
-            if (tgPollRef.current) {
-              clearInterval(tgPollRef.current)
-              tgPollRef.current = null
-            }
-            setError('Ссылка Telegram устарела, попробуйте еще раз')
-            setTelegramLoading(false)
-          }
-        } catch (e) {
-          console.error(e)
-        }
-      }, 2500)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Ошибка Telegram-авторизации')
-      setTelegramLoading(false)
-    }
-  }
-
   function handleCodeInput(i: number, val: string) {
     if (!/^\d*$/.test(val)) return
     const next = [...code]; next[i] = val.slice(-1); setCode(next)
@@ -135,13 +77,13 @@ export default function LoginPage() {
 
   async function verify(codeStr?: string) {
     const c = codeStr || code.join('')
-    if (c.length !== 4) { setError('Введи 4-значный код'); return }
+    if (c.length !== 4) { setError('Введите 4-значный код'); return }
     setLoading(true); setError('')
     try {
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: sentTo, code: c }),
+        body: JSON.stringify({ email: sentTo, code: c }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -161,11 +103,8 @@ export default function LoginPage() {
     fontFamily: 'inherit', outline: 'none', transition: 'border-color 0.2s',
     boxSizing: 'border-box', width: '100%',
   }
-
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-
-      {/* Animated background — isolated component, no re-renders */}
       <StarfieldBg />
 
       {/* Auth card */}
@@ -180,48 +119,21 @@ export default function LoginPage() {
 
         {step === 'input' ? (
           <>
-            {/* Tabs */}
-            <div style={{ display: 'flex', background: '#1c1c28', borderRadius: 12, padding: 4, gap: 4, marginBottom: 20 }}>
-              {(['phone', 'email'] as AuthTab[]).map(t => (
-                <button key={t} onClick={() => { setTab(t); setError('') }}
-                  style={{ flex: 1, padding: 10, background: tab === t ? '#12121a' : 'none', border: 'none', borderRadius: 9, color: tab === t ? '#f0f0f8' : '#7070a0', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s', boxShadow: tab === t ? '0 2px 8px rgba(0,0,0,0.3)' : 'none' }}>
-                  {t === 'phone' ? '📱 Телефон' : '✉️ Почта'}
-                </button>
-              ))}
+            {/* Email input */}
+            <div style={{ marginBottom: 12 }}>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                style={inp}
+                onFocus={e => (e.target.style.borderColor = '#7c3aed')}
+                onBlur={e => (e.target.style.borderColor = '#2a2a3d')}
+                onKeyDown={e => e.key === 'Enter' && send()}
+                autoFocus
+              />
             </div>
-
-            {/* Phone input */}
-            {tab === 'phone' ? (
-              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <div style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 10, padding: '14px 16px', fontSize: 15, color: '#f0f0f8', fontWeight: 600, flexShrink: 0 }}>+7</div>
-                <input
-                  ref={phoneRef}
-                  type="tel"
-                  placeholder="999 000-00-00"
-                  style={{ ...inp, flex: 1, width: 'auto' }}
-                  onFocus={e => (e.target.style.borderColor = '#7c3aed')}
-                  onBlur={e => (e.target.style.borderColor = '#2a2a3d')}
-                  onKeyDown={e => e.key === 'Enter' && send()}
-                  autoFocus
-                />
-              </div>
-            ) : (
-              <div style={{ marginBottom: 12 }}>
-                <input
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  style={inp}
-                  onFocus={e => (e.target.style.borderColor = '#7c3aed')}
-                  onBlur={e => (e.target.style.borderColor = '#2a2a3d')}
-                  onKeyDown={e => e.key === 'Enter' && send()}
-                  autoFocus
-                />
-              </div>
-            )}
-
-            <p style={{ fontSize: 12, color: '#7070a0', textAlign: 'center', marginBottom: 16 }}>Пришлём код подтверждения</p>
+            <p style={{ fontSize: 12, color: '#7070a0', textAlign: 'center', marginBottom: 16 }}>Пришлём код подтверждения на почту</p>
             {error && <p style={{ color: '#ff4d6d', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{error}</p>}
 
             <button onClick={send} disabled={loading} className="font-unbounded font-bold"
@@ -232,56 +144,26 @@ export default function LoginPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, color: '#7070a0', fontSize: 12 }}>
               <div style={{ flex: 1, height: 1, background: '#2a2a3d' }} />или войти через<div style={{ flex: 1, height: 1, background: '#2a2a3d' }} />
             </div>
+
             <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-              <button
-                onClick={startTelegramLogin}
-                disabled={telegramLoading}
-                style={{
-                  flex: 1,
-                  padding: '11px 6px',
-                  background: '#1c1c28',
-                  border: '1px solid #2a2a3d',
-                  borderRadius: 10,
-                  color: '#7070a0',
-                  fontFamily: 'inherit',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  opacity: telegramLoading ? 0.6 : 1,
-                }}
-              >
-                Telegram
-              </button>
-              <button
-                onClick={() => alert('VK ID будет доступен позже')}
-                style={{
-                  flex: 1,
-                  padding: '11px 6px',
-                  background: '#1c1c28',
-                  border: '1px solid #2a2a3d',
-                  borderRadius: 10,
-                  color: '#7070a0',
-                  fontFamily: 'inherit',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                }}
-              >
+              <a href="/api/auth/vk"
+                style={{ flex: 1, padding: '11px 6px', background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 10, color: '#4680C2', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer', textDecoration: 'none', textAlign: 'center', fontWeight: 600, transition: 'border-color 0.2s' }}
+                onMouseOver={e => (e.currentTarget.style.borderColor = '#4680C2')}
+                onMouseOut={e => (e.currentTarget.style.borderColor = '#2a2a3d')}>
                 VK ID
-              </button>
-              <button
-                onClick={() => alert('Яндекс-логин будет доступен позже')}
-                style={{
-                  flex: 1,
-                  padding: '11px 6px',
-                  background: '#1c1c28',
-                  border: '1px solid #2a2a3d',
-                  borderRadius: 10,
-                  color: '#7070a0',
-                  fontFamily: 'inherit',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                }}
-              >
+              </a>
+              <a href="/api/auth/yandex"
+                style={{ flex: 1, padding: '11px 6px', background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 10, color: '#FC3F1D', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer', textDecoration: 'none', textAlign: 'center', fontWeight: 600, transition: 'border-color 0.2s' }}
+                onMouseOver={e => (e.currentTarget.style.borderColor = '#FC3F1D')}
+                onMouseOut={e => (e.currentTarget.style.borderColor = '#2a2a3d')}>
                 Яндекс
+              </a>
+              <button
+                onClick={() => { window.location.href = '/api/auth/telegram/start' }}
+                style={{ flex: 1, padding: '11px 6px', background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 10, color: '#26A5E4', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer', fontWeight: 600, transition: 'border-color 0.2s' }}
+                onMouseOver={e => (e.currentTarget.style.borderColor = '#26A5E4')}
+                onMouseOut={e => (e.currentTarget.style.borderColor = '#2a2a3d')}>
+                Telegram
               </button>
             </div>
           </>
@@ -292,7 +174,7 @@ export default function LoginPage() {
             </div>
             {devCode && (
               <div style={{ marginBottom: 16, background: 'rgba(34,211,160,0.08)', border: '1px solid rgba(34,211,160,0.2)', color: '#22d3a0', borderRadius: 10, padding: 10, textAlign: 'center', fontSize: 13 }}>
-                🔧 DEV: код <strong>{devCode}</strong>
+                DEV: код <strong>{devCode}</strong>
               </div>
             )}
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 16 }}>

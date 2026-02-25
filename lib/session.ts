@@ -6,14 +6,18 @@ const SESSION_COOKIE = 'cardai_session'
 export function createSession(identity: string): string {
   const token = generateToken()
   const sessions = readSessions()
-  sessions[token] = { phone: identity, createdAt: Date.now() }
+  sessions[token] = { email: identity, createdAt: Date.now() }
   writeSessions(sessions)
 
-  const isTelegram = identity.startsWith('tg:')
+  const method = identity.startsWith('vk:') ? 'vk'
+    : identity.startsWith('ya:') ? 'yandex'
+    : identity.startsWith('tg:') ? 'telegram'
+    : 'email'
+
   upsertUser({
     id: identity,
     display: identity,
-    method: isTelegram ? 'telegram' : 'sms',
+    method,
     createdAt: Date.now(),
     lastLoginAt: Date.now(),
   })
@@ -21,7 +25,7 @@ export function createSession(identity: string): string {
   return token
 }
 
-export function getSession(token: string): { phone: string; createdAt: number } | null {
+export function getSession(token: string): { email: string; createdAt: number } | null {
   const sessions = readSessions()
   const s = sessions[token]
   if (!s) return null
@@ -30,10 +34,11 @@ export function getSession(token: string): { phone: string; createdAt: number } 
     writeSessions(sessions)
     return null
   }
-  return s
+  // Поддержка старых сессий с phone
+  return { email: s.email || (s as any).phone || '', createdAt: s.createdAt }
 }
 
-export async function getCurrentSession(): Promise<{ phone: string; createdAt: number } | null> {
+export async function getCurrentSession(): Promise<{ email: string; createdAt: number } | null> {
   const cookieStore = await cookies()
   const token = cookieStore.get(SESSION_COOKIE)?.value
   if (!token) return null

@@ -27,7 +27,6 @@ export function readOTPs(): Record<string, OTPEntry> {
   ensureDir()
   try { return JSON.parse(fs.readFileSync(OTP_FILE, 'utf8')) } catch { return {} }
 }
-
 export function writeOTPs(data: Record<string, OTPEntry>) {
   ensureDir()
   fs.writeFileSync(OTP_FILE, JSON.stringify(data, null, 2))
@@ -35,7 +34,7 @@ export function writeOTPs(data: Record<string, OTPEntry>) {
 
 // ---- Sessions ----
 export interface SessionEntry {
-  phone: string
+  email: string
   createdAt: number
 }
 
@@ -54,7 +53,7 @@ export interface TelegramLoginEntry {
   status: 'pending' | 'done'
   telegramId?: number
   username?: string
-  phone?: string
+  email?: string
   createdAt: number
 }
 
@@ -67,18 +66,19 @@ export function writeTelegramLogins(data: Record<string, TelegramLoginEntry>) {
   ensureDir()
   fs.writeFileSync(TELEGRAM_LOGIN_FILE, JSON.stringify(data, null, 2))
 }
-
 // ---- Users ----
 export interface UserEntry {
   id: string
   display: string
-  method: 'sms' | 'telegram'
+  method: 'email' | 'telegram' | 'vk' | 'yandex'
   createdAt: number
   lastLoginAt: number
   meta?: {
-    phone?: string
+    email?: string
     telegramId?: number
     username?: string
+    vkId?: string
+    yandexId?: string
   }
 }
 
