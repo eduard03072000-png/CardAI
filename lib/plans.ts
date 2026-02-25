@@ -21,9 +21,9 @@ export interface Plan {
 export const PLANS: Record<string, Plan> = {
   seller: {
     id: 'seller', name: 'Продавец', price: 690, dailyLimit: 5,
-    platforms: ['wb'],
-    historyDays: 0,
-    features: ['excel', 'basic_seo'],
+    platforms: ['wb', 'ozon'],
+    historyDays: 7,
+    features: ['excel', 'basic_seo', 'history'],
   },
   shop: {
     id: 'shop', name: 'Магазин', price: 1490, dailyLimit: 20,
@@ -35,13 +35,13 @@ export const PLANS: Record<string, Plan> = {
     id: 'warehouse', name: 'Склад', price: 3490, dailyLimit: 100,
     platforms: ['wb', 'ozon', 'avito'],
     historyDays: 90,
-    features: ['excel', 'csv', 'json', 'advanced_seo', 'ab_test', 'variants', 'photo_ai', 'history', 'bulk_csv'],
+    features: ['excel', 'csv', 'json', 'advanced_seo', 'variants', 'photo_ai', 'history', 'bulk_csv'],
   },
   network: {
     id: 'network', name: 'Сеть', price: 6990, dailyLimit: 999999,
     platforms: ['wb', 'ozon', 'avito'],
     historyDays: 365,
-    features: ['excel', 'csv', 'json', 'advanced_seo', 'ab_test', 'auto_optimize', 'variants', 'photo_ai', 'history', 'bulk_csv', 'team', 'priority_support'],
+    features: ['excel', 'csv', 'json', 'advanced_seo', 'variants', 'photo_ai', 'history', 'bulk_csv', 'team', 'priority_support'],
   },
 }
 

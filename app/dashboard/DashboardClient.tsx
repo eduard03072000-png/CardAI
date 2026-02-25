@@ -3,13 +3,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Platform, ProductForm, GenerateResult, QueueItem, HistoryItem } from '@/lib/types'
-import { exportToExcel } from '@/lib/excel'
+import { exportToCsv, exportToExcel } from '@/lib/excel'
 
 type Tab = 'result' | 'seo' | 'variants'
 type Section = 'generator' | 'history' | 'plans'
 
 interface PlanInfo { id: string; name: string; dailyLimit: number; historyDays: number }
 interface ServerHistoryItem { id: string; platform: string; productName: string; category: string; result: GenerateResult; createdAt: string }
+interface TeamMember { id: string; email: string; role: 'admin' | 'editor'; status: 'active'; createdAt: string }
 
 const STEPS = ['Анализ фотографий', 'Распознавание характеристик', 'Подбор ключевых слов', 'Генерация описания', 'SEO-оптимизация']
 
@@ -246,7 +247,7 @@ export default function DashboardClient({ phone }: { phone: string }) {
   const blurBorder = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => (e.target.style.borderColor = '#2a2a3d')
 
   // ── PLANS section ─────────────────────────────────────────────
-  if (section === 'plans') return <PlansView phone={phone} onBack={() => setSection('generator')} onLogout={logout} />
+  if (section === 'plans') return <PlansView phone={phone} planInfo={planInfo} onBack={() => setSection('generator')} onLogout={logout} />
 
   // ── HISTORY section ───────────────────────────────────────────
   if (section === 'history') return (
@@ -706,7 +707,7 @@ export default function DashboardClient({ phone }: { phone: string }) {
               <div style={{ marginTop: 12, background: '#1c1c28', border: '1px solid rgba(34,211,160,0.2)', borderRadius: 14, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #2a2a3d' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#7070a0' }}>
-                    <span>📊</span><span>В Excel:</span>
+                    <span>📊</span><span>В экспорте:</span>
                     <span className="font-unbounded font-black" style={{ fontSize: 16, color: '#22d3a0', lineHeight: 1 }}>{queue.length}</span>
                     <span>товаров</span>
                   </div>
@@ -726,11 +727,18 @@ export default function DashboardClient({ phone }: { phone: string }) {
                     )
                   })}
                 </div>
-                <button onClick={() => exportToExcel(queue)}
-                  style={{ width: '100%', padding: 13, background: 'linear-gradient(135deg,rgba(34,211,160,0.2),rgba(34,211,160,0.08))', border: 'none', borderTop: '1px solid rgba(34,211,160,0.2)', color: '#22d3a0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit', letterSpacing: -0.2 }}
-                  className="font-unbounded font-bold text-xs">
-                  📥 Скачать Excel ({queue.some(i => i.platform === 'wb') && queue.some(i => i.platform === 'ozon') ? 'WB + Ozon' : queue[0]?.platform.toUpperCase()})
-                </button>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 8, borderTop: '1px solid rgba(34,211,160,0.2)' }}>
+                  <button onClick={() => exportToExcel(queue)}
+                    style={{ width: '100%', padding: 12, background: 'linear-gradient(135deg,rgba(34,211,160,0.2),rgba(34,211,160,0.08))', border: 'none', borderRadius: 10, color: '#22d3a0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit', letterSpacing: -0.2 }}
+                    className="font-unbounded font-bold text-xs">
+                    📥 Excel
+                  </button>
+                  <button onClick={() => exportToCsv(queue)}
+                    style={{ width: '100%', padding: 12, background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.35)', borderRadius: 10, color: '#a78bfa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit', letterSpacing: -0.2 }}
+                    className="font-unbounded font-bold text-xs">
+                    📄 CSV
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -930,16 +938,86 @@ function RBlock({ label, extra, children, onCopy, copied }: { label: string; ext
 }
 
 // ── Plans section ──────────────────────────────────────────────────────────────
-function PlansView({ phone, onBack, onLogout }: { phone: string; onBack: () => void; onLogout: () => void }) {
+function PlansView({ phone, planInfo, onBack, onLogout }: { phone: string; planInfo: PlanInfo; onBack: () => void; onLogout: () => void }) {
+  const [teamOpen, setTeamOpen] = useState(false)
+  const [supportOpen, setSupportOpen] = useState(false)
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [memberEmail, setMemberEmail] = useState('')
+  const [memberRole, setMemberRole] = useState<'admin' | 'editor'>('editor')
+  const [supportSubject, setSupportSubject] = useState('')
+  const [supportMessage, setSupportMessage] = useState('')
+  const [uiError, setUiError] = useState('')
+  const [uiSuccess, setUiSuccess] = useState('')
+
+  async function loadTeam() {
+    const res = await fetch('/api/team')
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Не удалось загрузить команду')
+    setTeamMembers(data.members || [])
+  }
+
+  async function addMember() {
+    setUiError('')
+    setUiSuccess('')
+    try {
+      const res = await fetch('/api/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: memberEmail, role: memberRole }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Не удалось добавить сотрудника')
+      setMemberEmail('')
+      await loadTeam()
+      setUiSuccess('Сотрудник добавлен')
+    } catch (e: unknown) {
+      setUiError(e instanceof Error ? e.message : 'Ошибка')
+    }
+  }
+
+  async function removeMember(id: string) {
+    setUiError('')
+    setUiSuccess('')
+    try {
+      const res = await fetch(`/api/team?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Не удалось удалить сотрудника')
+      await loadTeam()
+      setUiSuccess('Сотрудник удален')
+    } catch (e: unknown) {
+      setUiError(e instanceof Error ? e.message : 'Ошибка')
+    }
+  }
+
+  async function submitSupport() {
+    setUiError('')
+    setUiSuccess('')
+    try {
+      const res = await fetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: supportSubject, message: supportMessage }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Не удалось отправить обращение')
+      setSupportSubject('')
+      setSupportMessage('')
+      setUiSuccess(`Обращение отправлено (#${data.ticketId})`)
+      setSupportOpen(false)
+    } catch (e: unknown) {
+      setUiError(e instanceof Error ? e.message : 'Ошибка')
+    }
+  }
+
   const PLANS = [
     { emoji: '🛒', name: 'Продавец', price: '690', tag: 'Начни продавать с AI', btn: 'Подключить →', btnType: 'starter' as const, popular: false,
-      features: [{ t: '5 карточек в день', ok: true }, { t: '1 платформа (WB или Ozon)', ok: true }, { t: 'Excel-экспорт', ok: true }, { t: 'Базовый SEO-анализ', ok: true }, { t: 'Email-поддержка', ok: true }, { t: '3 варианта заголовков', ok: false }, { t: 'Анализ фотографий AI', ok: false }, { t: 'Пакетная загрузка CSV', ok: false }] },
+      features: [{ t: '5 карточек в день', ok: true }, { t: 'WB + Ozon', ok: true }, { t: 'Excel + CSV экспорт', ok: true }, { t: 'Базовый SEO-анализ', ok: true }, { t: 'Email-поддержка', ok: true }, { t: 'История 7 дней', ok: true }, { t: '3 варианта заголовков', ok: false }, { t: 'Анализ фотографий AI', ok: false }] },
     { emoji: '🏬', name: 'Магазин', price: '1 490', tag: 'Когда товаров уже много', btn: 'Открыть магазин →', btnType: 'pro' as const, popular: true,
-      features: [{ t: '20 карточек в день', ok: true }, { t: 'WB + Ozon + Авито', ok: true }, { t: 'Excel пакетами', ok: true }, { t: 'Продвинутый SEO-анализ', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 30 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: false }] },
+      features: [{ t: '20 карточек в день', ok: true }, { t: 'WB + Ozon + Авито', ok: true }, { t: 'Excel + CSV экспорт', ok: true }, { t: 'Продвинутый SEO-анализ', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 30 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: false }] },
     { emoji: '🏭', name: 'Склад', price: '3 490', tag: 'Масштабируй продажи', btn: 'Арендовать склад →', btnType: 'team' as const, popular: false,
-      features: [{ t: '100 карточек в день', ok: true }, { t: 'Все платформы + API', ok: true }, { t: 'Excel/CSV/JSON экспорт', ok: true }, { t: 'SEO + А/Б тест заголовков', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 90 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: true }] },
+      features: [{ t: '100 карточек в день', ok: true }, { t: 'Все платформы', ok: true }, { t: 'Excel/CSV/JSON экспорт', ok: true }, { t: 'SEO-анализ + рекомендации', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 90 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: true }] },
     { emoji: '🌐', name: 'Сеть', price: '6 990', tag: 'Для команд и агентств', btn: 'Запустить сеть →', btnType: 'enterprise' as const, popular: false,
-      features: [{ t: 'Безлимит карточек', ok: true }, { t: 'Все платформы + API', ok: true }, { t: 'Все форматы экспорта', ok: true }, { t: 'SEO + А/Б + автооптимизация', ok: true }, { t: 'До 10 сотрудников', ok: true }, { t: 'Приоритетная поддержка', ok: true }, { t: 'История 12 месяцев', ok: true }, { t: 'Персональный менеджер', ok: true }] },
+      features: [{ t: 'Безлимит карточек', ok: true }, { t: 'Все платформы', ok: true }, { t: 'Все форматы экспорта', ok: true }, { t: 'SEO-анализ и рекомендации', ok: true }, { t: 'До 10 сотрудников', ok: true }, { t: 'Окно поддержки в кабинете', ok: true }, { t: 'История 12 месяцев', ok: true }, { t: 'Приоритетная поддержка', ok: true }] },
   ]
 
   return (
@@ -952,10 +1030,42 @@ function PlansView({ phone, onBack, onLogout }: { phone: string; onBack: () => v
         <button onClick={onLogout} style={{ fontSize: 12, padding: '6px 12px', background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, color: '#7070a0', cursor: 'pointer', fontFamily: 'inherit' }}>Выйти</button>
       </header>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 40px 100px', position: 'relative', zIndex: 2 }}>
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ display: 'inline-block', background: 'rgba(255,77,109,0.12)', border: '1px solid rgba(255,77,109,0.3)', color: '#ff4d6d', fontSize: 11, fontWeight: 500, letterSpacing: 2, textTransform: 'uppercase', padding: '6px 16px', borderRadius: 20, marginBottom: 20 }}>💎 Тарифы</div>
           <h2 className="font-unbounded font-black" style={{ fontSize: 'clamp(28px,4vw,48px)', letterSpacing: -2, marginBottom: 12 }}>Выбери свой план</h2>
-          <p style={{ color: '#7070a0', fontSize: 16 }}>Без скрытых комиссий. Отменить можно в любой момент.</p>
+          <p style={{ color: '#7070a0', fontSize: 16, marginBottom: 16 }}>Без скрытых комиссий. Отменить можно в любой момент.</p>
+          <div style={{ color: '#a0a0c0', fontSize: 13, marginBottom: 16 }}>
+            Текущий тариф: <strong style={{ color: '#f0f0f8' }}>{planInfo.name}</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
+            <button
+              onClick={async () => {
+                setUiError('')
+                setUiSuccess('')
+                if (planInfo.id !== 'network') {
+                  setUiError('Управление командой доступно только на тарифе «Сеть».')
+                  return
+                }
+                try {
+                  await loadTeam()
+                  setTeamOpen(true)
+                } catch (e: unknown) {
+                  setUiError(e instanceof Error ? e.message : 'Ошибка загрузки команды')
+                }
+              }}
+              style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.35)', borderRadius: 10, padding: '8px 14px', color: '#a78bfa', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              👥 Команда
+            </button>
+            <button
+              onClick={() => { setUiError(''); setUiSuccess(''); setSupportOpen(true) }}
+              style={{ background: 'rgba(34,211,160,0.12)', border: '1px solid rgba(34,211,160,0.35)', borderRadius: 10, padding: '8px 14px', color: '#22d3a0', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              💬 Поддержка
+            </button>
+          </div>
+          {uiError && <div style={{ color: '#ff4d6d', fontSize: 12, marginBottom: 6 }}>{uiError}</div>}
+          {uiSuccess && <div style={{ color: '#22d3a0', fontSize: 12, marginBottom: 6 }}>{uiSuccess}</div>}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 40 }}>
           {PLANS.map(plan => (
@@ -998,6 +1108,52 @@ function PlansView({ phone, onBack, onLogout }: { phone: string; onBack: () => v
           ))}
         </div>
       </div>
+
+      {teamOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+          <div style={{ width: '100%', maxWidth: 560, background: '#12121a', border: '1px solid #2a2a3d', borderRadius: 14, padding: 20 }}>
+            <div className="font-unbounded font-bold" style={{ marginBottom: 12 }}>Команда (до 10 сотрудников)</div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <input value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} placeholder="email сотрудника" style={{ flex: 1, background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, padding: '10px 12px', color: '#f0f0f8', fontFamily: 'inherit' }} />
+              <select value={memberRole} onChange={(e) => setMemberRole(e.target.value === 'admin' ? 'admin' : 'editor')} style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, padding: '10px 8px', color: '#f0f0f8', fontFamily: 'inherit' }}>
+                <option value="editor">editor</option>
+                <option value="admin">admin</option>
+              </select>
+              <button onClick={addMember} style={{ background: 'linear-gradient(135deg,#ff4d6d,#7c3aed)', border: 'none', borderRadius: 8, padding: '10px 12px', color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>Добавить</button>
+            </div>
+            <div style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid #2a2a3d', borderRadius: 10 }}>
+              {teamMembers.length === 0 ? (
+                <div style={{ padding: 12, color: '#7070a0', fontSize: 13 }}>Пока нет сотрудников</div>
+              ) : teamMembers.map((m) => (
+                <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderTop: '1px solid #1c1c28' }}>
+                  <div>
+                    <div style={{ fontSize: 13 }}>{m.email}</div>
+                    <div style={{ fontSize: 11, color: '#7070a0' }}>{m.role}</div>
+                  </div>
+                  <button onClick={() => removeMember(m.id)} style={{ background: 'none', border: '1px solid #2a2a3d', borderRadius: 8, padding: '4px 10px', color: '#7070a0', cursor: 'pointer', fontFamily: 'inherit' }}>Удалить</button>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+              <button onClick={() => setTeamOpen(false)} style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, padding: '8px 12px', color: '#f0f0f8', cursor: 'pointer', fontFamily: 'inherit' }}>Закрыть</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {supportOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+          <div style={{ width: '100%', maxWidth: 560, background: '#12121a', border: '1px solid #2a2a3d', borderRadius: 14, padding: 20 }}>
+            <div className="font-unbounded font-bold" style={{ marginBottom: 12 }}>Окно поддержки</div>
+            <input value={supportSubject} onChange={(e) => setSupportSubject(e.target.value)} placeholder="Тема обращения" style={{ width: '100%', marginBottom: 8, background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, padding: '10px 12px', color: '#f0f0f8', fontFamily: 'inherit' }} />
+            <textarea value={supportMessage} onChange={(e) => setSupportMessage(e.target.value)} placeholder="Опишите ваш вопрос" style={{ width: '100%', minHeight: 120, background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, padding: '10px 12px', color: '#f0f0f8', fontFamily: 'inherit', resize: 'vertical' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
+              <button onClick={() => setSupportOpen(false)} style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, padding: '8px 12px', color: '#f0f0f8', cursor: 'pointer', fontFamily: 'inherit' }}>Отмена</button>
+              <button onClick={submitSupport} style={{ background: 'linear-gradient(135deg,#22d3a0,#16a34a)', border: 'none', borderRadius: 8, padding: '8px 12px', color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>Отправить</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

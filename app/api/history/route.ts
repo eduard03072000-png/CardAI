@@ -10,7 +10,7 @@ export async function GET() {
 
   const userId = session.email
   const plan = await getUserPlan(userId)
-  const history = await getUserHistory(userId, 100, plan.historyDays || undefined)
+  const history = await getUserHistory(userId, 100, plan.historyDays)
   const todayCount = await countTodayGenerations(userId)
 
   return NextResponse.json({

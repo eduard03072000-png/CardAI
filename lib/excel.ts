@@ -101,3 +101,58 @@ export async function exportToExcel(queue: QueueItem[]) {
 
   XLSX.writeFile(wb, `CardAI_${platforms}_${queue.length}товаров_${ts}.xlsx`)
 }
+
+export function exportToCsv(queue: QueueItem[]) {
+  if (queue.length === 0) return
+
+  const headers = [
+    'platform',
+    'title',
+    'description',
+    'keywords',
+    'attributes',
+    'price',
+    'brand',
+    'category',
+    'color',
+    'sizes',
+    'material',
+    'country',
+    'vendor_code',
+  ]
+
+  const escapeCell = (value: string) => `"${String(value).replace(/"/g, '""')}"`
+  const rows = queue.map(({ platform, form, result }) => [
+    platform,
+    result.title,
+    result.description.replace(/\n/g, ' '),
+    result.keywords.join(', '),
+    result.attributes.replace(/\n/g, ' '),
+    form.price,
+    form.brand,
+    form.category,
+    form.color,
+    form.sizes,
+    form.material,
+    form.country,
+    form.vendorCode || form.vendorCodeOzon,
+  ])
+
+  const csv = [
+    headers.map(escapeCell).join(','),
+    ...rows.map((row) => row.map((v) => escapeCell(String(v || ''))).join(',')),
+  ].join('\n')
+
+  const bom = '\uFEFF'
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const ts = new Date().toLocaleDateString('ru').replace(/\./g, '-')
+
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `CardAI_export_${queue.length}товаров_${ts}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}

@@ -98,6 +98,11 @@ export async function POST(req: NextRequest) {
     if (!productName || !platform) {
       return NextResponse.json({ error: 'Обязательные поля не заполнены' }, { status: 400 })
     }
+    if (!plan.platforms.includes(platform)) {
+      return NextResponse.json({
+        error: `Платформа ${String(platform).toUpperCase()} недоступна на тарифе «${plan.name}».`,
+      }, { status: 403 })
+    }
 
     // Обрабатываем изображения
     let validImages: string[] = []
