@@ -482,11 +482,20 @@ export default function DashboardClient({ phone }: { phone: string }) {
 
             {error && <p style={{ color: '#ff4d6d', background: 'rgba(255,77,109,0.08)', border: '1px solid rgba(255,77,109,0.2)', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 14 }}>{error}</p>}
 
-            <button onClick={generate} disabled={loading || !form.productName}
-              className="font-unbounded font-bold"
-              style={{ width: '100%', padding: 16, background: 'linear-gradient(135deg,#ff4d6d,#7c3aed)', border: 'none', borderRadius: 12, color: 'white', fontSize: 13, cursor: form.productName ? 'pointer' : 'not-allowed', transition: 'all 0.2s', letterSpacing: -0.3, opacity: loading || !form.productName ? 0.5 : 1 }}>
-              {loading ? '⟳ Генерирую...' : !phone ? '🔐 Войдите, чтобы сгенерировать' : images.length > 0 ? '✦ Анализировать фото и создать карточку' : '✦ Сгенерировать карточку'}
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={generate} disabled={loading || !form.productName}
+                className="font-unbounded font-bold"
+                style={{ flex: 1, padding: 16, background: 'linear-gradient(135deg,#ff4d6d,#7c3aed)', border: 'none', borderRadius: 12, color: 'white', fontSize: 13, cursor: form.productName ? 'pointer' : 'not-allowed', transition: 'all 0.2s', letterSpacing: -0.3, opacity: loading || !form.productName ? 0.5 : 1 }}>
+                {loading ? '⟳ Генерирую...' : !phone ? '🔐 Войдите, чтобы сгенерировать' : images.length > 0 ? '✦ Анализировать фото и создать карточку' : '✦ Сгенерировать карточку'}
+              </button>
+              <button onClick={() => { setForm(DEFAULT_FORM); setImages([]); setResult(null); setError('') }}
+                title="Очистить все поля"
+                style={{ padding: '16px 18px', background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 12, color: '#7070a0', fontSize: 16, cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+                onMouseOver={e => { e.currentTarget.style.borderColor = '#ff4d6d'; e.currentTarget.style.color = '#ff4d6d' }}
+                onMouseOut={e => { e.currentTarget.style.borderColor = '#2a2a3d'; e.currentTarget.style.color = '#7070a0' }}>
+                🗑
+              </button>
+            </div>
             {!result && (
               <button
                 type="button"

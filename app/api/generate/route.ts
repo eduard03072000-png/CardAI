@@ -135,8 +135,13 @@ export async function POST(req: NextRequest) {
 
     if (!groqResponse.ok) {
       const errText = await groqResponse.text()
-      console.error('Groq API error:', errText)
-      return NextResponse.json({ error: 'Ошибка Groq API: ' + groqResponse.statusText }, { status: 502 })
+      console.error('Groq API error:', groqResponse.status, errText)
+      let detail = groqResponse.statusText
+      try {
+        const errJson = JSON.parse(errText)
+        detail = errJson.error?.message || errJson.error || detail
+      } catch {}
+      return NextResponse.json({ error: `Ошибка Groq API: ${detail}` }, { status: 502 })
     }
 
     const groqData = await groqResponse.json()
