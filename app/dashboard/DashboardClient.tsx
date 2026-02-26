@@ -271,6 +271,10 @@ export default function DashboardClient({ phone }: { phone: string }) {
       return DEFAULT_VISIBLE_CHARACTERISTICS
     }
   })
+  const [bulkCsvOpen, setBulkCsvOpen] = useState(false)
+  const [batchCsvFile, setBatchCsvFile] = useState<File | null>(null)
+  const [batchRunning, setBatchRunning] = useState(false)
+  const [batchProgress, setBatchProgress] = useState({ total: 0, processed: 0, success: 0, failed: 0 })
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionCabinet | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -401,6 +405,78 @@ export default function DashboardClient({ phone }: { phone: string }) {
     })
     setTemplateName(tpl.name)
     setError('')
+  }
+
+  function parseCsv(content: string): Array<Record<string, string>> {
+    const lines = content.replace(/\r/g, '').split('\n').filter(Boolean)
+    if (lines.length < 2) return []
+    const split = (line: string) => line.split(',').map((v) => v.trim().replace(/^"(.*)"$/, '$1'))
+    const headers = split(lines[0]).map((h) => h.toLowerCase())
+    return lines.slice(1).map((line) => {
+      const cells = split(line)
+      const row: Record<string, string> = {}
+      headers.forEach((h, i) => { row[h] = cells[i] || '' })
+      return row
+    })
+  }
+
+  async function runBatchFromCsv() {
+    if (!batchCsvFile) return
+    const text = await batchCsvFile.text()
+    const rows = parseCsv(text)
+    if (rows.length === 0) {
+      setError('CSV пуст или неверный формат')
+      return
+    }
+
+    setBatchRunning(true)
+    setBatchProgress({ total: rows.length, processed: 0, success: 0, failed: 0 })
+    setError('')
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]
+      const payload = {
+        platform: (row.platform || platform || 'wb').toLowerCase(),
+        productName: row.productname || row.product_name || '',
+        category: row.category || '',
+        specs: row.specs || '',
+        notes: row.notes || '',
+        brand: row.brand || '',
+        color: row.color || '',
+        sizes: row.sizes || '',
+        material: row.material || '',
+        country: row.country || '',
+        price: row.price || '',
+        discount: row.discount || '',
+        gender: row.gender || '',
+        season: row.season || '',
+        nds: row.nds || '',
+        barcode: row.barcode || '',
+        weightG: row.weightg || '',
+        images: [],
+        templateStyle,
+      }
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, isBulk: true }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Ошибка генерации')
+        setQueue((prev) => [...prev, {
+          id: Date.now() + i,
+          platform: payload.platform as Platform,
+          form: { ...DEFAULT_FORM, ...payload, productName: payload.productName } as ProductForm,
+          result: data.data,
+        }])
+        setBatchProgress((prev) => ({ ...prev, processed: prev.processed + 1, success: prev.success + 1 }))
+      } catch {
+        setBatchProgress((prev) => ({ ...prev, processed: prev.processed + 1, failed: prev.failed + 1 }))
+      }
+    }
+    setBatchRunning(false)
+    loadAccountData().catch(() => {})
   }
 
 
@@ -1082,6 +1158,37 @@ export default function DashboardClient({ phone }: { phone: string }) {
                     {'{ }'} JSON
                   </button>
                 </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setBulkCsvOpen((prev) => !prev)}
+              style={{ marginTop: 12, width: '100%', padding: 10, background: 'none', border: '1px dashed #2a2a3d', borderRadius: 10, color: '#8f8fb4', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              {bulkCsvOpen ? 'Скрыть пакетную генерацию CSV' : 'Показать пакетную генерацию CSV'}
+            </button>
+
+            {bulkCsvOpen && (
+              <div style={{ marginTop: 10, background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 14, padding: 12 }}>
+                <div style={{ fontSize: 12, color: '#a0a0c0', marginBottom: 8 }}>Пакетная генерация из CSV</div>
+                <div style={{ fontSize: 12, color: '#7070a0', marginBottom: 8, lineHeight: 1.5 }}>
+                  Загрузите CSV, где <strong style={{ color: '#d0d0e8' }}>1 строка = 1 товар</strong>. Для каждой строки запустится генерация карточки и успешные результаты попадут в очередь экспорта.
+                </div>
+                <input type="file" accept=".csv,text/csv" onChange={(e) => setBatchCsvFile(e.target.files?.[0] || null)} style={{ ...inp, marginBottom: 8, padding: '8px 10px' }} />
+                <button
+                  type="button"
+                  disabled={!batchCsvFile || batchRunning}
+                  onClick={runBatchFromCsv}
+                  style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid rgba(34,211,160,0.35)', background: 'rgba(34,211,160,0.12)', color: '#22d3a0', cursor: batchCsvFile && !batchRunning ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: batchCsvFile && !batchRunning ? 1 : 0.6 }}
+                >
+                  {batchRunning ? 'Идет пакетная генерация...' : 'Запустить CSV'}
+                </button>
+                {(batchProgress.total > 0 || batchRunning) && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: '#7070a0' }}>
+                    Обработано: {batchProgress.processed}/{batchProgress.total} · Успех: {batchProgress.success} · Ошибок: {batchProgress.failed}
+                  </div>
+                )}
               </div>
             )}
 
