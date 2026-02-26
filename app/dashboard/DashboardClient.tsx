@@ -502,7 +502,33 @@ export default function DashboardClient({ phone }: { phone: string }) {
   }
 
   async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); router.push('/login') }
-  function copy(text: string, key: string) { navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(''), 2000) }
+  function fallbackCopyText(text: string) {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.setAttribute('readonly', '')
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    return ok
+  }
+  async function copy(text: string, key: string) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        const ok = fallbackCopyText(text)
+        if (!ok) throw new Error('fallback copy failed')
+      }
+      setCopied(key)
+      setError('')
+      setTimeout(() => setCopied(''), 2000)
+    } catch {
+      setError('Не удалось скопировать. Разрешите доступ к буферу обмена в браузере.')
+    }
+  }
 
   const scoreColor = (s: number) => s >= 75 ? '#22d3a0' : s >= 55 ? '#ffc700' : '#ff4d6d'
   const characteristicOptions = CHARACTERISTIC_OPTIONS.filter((option) => !option.platforms || option.platforms.includes(platform))
