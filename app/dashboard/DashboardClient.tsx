@@ -210,7 +210,7 @@ export default function DashboardClient({ phone }: { phone: string }) {
       const parsed = JSON.parse(raw)
       if (!Array.isArray(parsed)) return DEFAULT_VISIBLE_CHARACTERISTICS
       const valid = parsed.filter((item): item is CharacteristicKey => typeof item === 'string' && CHARACTERISTIC_KEY_SET.has(item as CharacteristicKey))
-      return valid.length > 0 ? Array.from(new Set(valid)) : DEFAULT_VISIBLE_CHARACTERISTICS
+      return Array.from(new Set(valid))
     } catch {
       return DEFAULT_VISIBLE_CHARACTERISTICS
     }
