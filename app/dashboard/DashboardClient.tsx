@@ -1535,13 +1535,13 @@ function PlansView({
 
   const PLANS = [
     { id: 'seller', emoji: '🛒', name: 'Продавец', price: '690', tag: 'Начни продавать с AI', btn: 'Подключить →', btnType: 'starter' as const, popular: false,
-      features: [{ t: '5 карточек в день', ok: true }, { t: 'WB + Ozon', ok: true }, { t: 'Excel + CSV экспорт', ok: true }, { t: 'Базовый SEO-анализ', ok: true }, { t: 'Email-поддержка', ok: true }, { t: 'История 7 дней', ok: true }, { t: '3 варианта заголовков', ok: false }, { t: 'Анализ фотографий AI', ok: false }] },
+      features: [{ t: '5 карточек в день', ok: true }, { t: 'WB или Ozon', ok: true }, { t: 'Excel экспорт', ok: true }, { t: 'Базовый SEO-анализ', ok: true }, { t: 'Email-поддержка', ok: true }, { t: 'История 7 дней', ok: true }, { t: '3 варианта заголовков', ok: false }, { t: 'Анализ фотографий AI', ok: false }] },
     { id: 'shop', emoji: '🏬', name: 'Магазин', price: '1 490', tag: 'Когда товаров уже много', btn: 'Открыть магазин →', btnType: 'pro' as const, popular: true,
-      features: [{ t: '20 карточек в день', ok: true }, { t: 'WB + Ozon', ok: true }, { t: 'Excel + CSV экспорт', ok: true }, { t: 'Продвинутый SEO-анализ', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 30 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: false }] },
+      features: [{ t: '20 карточек в день', ok: true }, { t: 'Все платформы', ok: true }, { t: 'Excel + CSV экспорт', ok: true }, { t: 'Продвинутый SEO-анализ', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 30 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: false }] },
     { id: 'warehouse', emoji: '🏭', name: 'Склад', price: '3 490', tag: 'Масштабируй продажи', btn: 'Арендовать склад →', btnType: 'team' as const, popular: false,
-      features: [{ t: '100 карточек в день', ok: true }, { t: 'Все платформы', ok: true }, { t: 'Excel/CSV/JSON экспорт', ok: true }, { t: 'SEO-анализ + рекомендации', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 90 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: true }] },
+      features: [{ t: '50 карточек в день', ok: true }, { t: 'Все платформы', ok: true }, { t: 'Excel/CSV экспорт', ok: true }, { t: 'SEO-анализ + рекомендации', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 90 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: true }] },
     { id: 'network', emoji: '🌐', name: 'Сеть', price: '6 990', tag: 'Для команд и агентств', btn: 'Запустить сеть →', btnType: 'enterprise' as const, popular: false,
-      features: [{ t: 'Безлимит карточек', ok: true }, { t: 'Все платформы', ok: true }, { t: 'Все форматы экспорта', ok: true }, { t: 'SEO-анализ и рекомендации', ok: true }, { t: 'До 10 сотрудников', ok: true }, { t: 'Окно поддержки в кабинете', ok: true }, { t: 'История 12 месяцев', ok: true }, { t: 'Приоритетная поддержка', ok: true }] },
+      features: [{ t: 'Безлимит карточек', ok: true }, { t: 'Все платформы', ok: true }, { t: 'Excel/CSV/JSON экспорт', ok: true }, { t: 'SEO-анализ и рекомендации', ok: true }, { t: 'До 10 сотрудников', ok: true }, { t: 'Окно поддержки в кабинете', ok: true }, { t: 'История 12 месяцев', ok: true }, { t: 'Приоритетная поддержка', ok: true }] },
   ]
 
   return (

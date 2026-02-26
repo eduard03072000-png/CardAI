@@ -33,10 +33,10 @@ export const PLANS: Record<string, Plan> = {
     features: ['excel', 'advanced_seo', 'variants', 'photo_ai', 'history'],
   },
   warehouse: {
-    id: 'warehouse', name: 'Склад', price: 3490, dailyLimit: 100,
+    id: 'warehouse', name: 'Склад', price: 3490, dailyLimit: 50,
     platforms: ['wb', 'ozon', 'avito'],
     historyDays: 90,
-    features: ['excel', 'csv', 'json', 'advanced_seo', 'variants', 'photo_ai', 'history', 'bulk_csv'],
+    features: ['excel', 'csv', 'advanced_seo', 'variants', 'photo_ai', 'history', 'bulk_csv'],
   },
   network: {
     id: 'network', name: 'Сеть', price: 6990, dailyLimit: 999999,
