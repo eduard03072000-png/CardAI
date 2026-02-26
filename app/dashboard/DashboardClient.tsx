@@ -65,7 +65,7 @@ interface SubscriptionCabinet {
   }
   payments: Array<{ id: string; planId: string; amount: number; type: string; createdAt: string }>
 }
-type CharacteristicKey = 'color' | 'sizes' | 'material' | 'country' | 'specs' | 'notes' | 'gender' | 'season'
+type CharacteristicKey = 'price' | 'stock' | 'color' | 'sizes' | 'material' | 'country' | 'specs' | 'notes' | 'gender' | 'season'
 
 const STEPS = ['Анализ фотографий', 'Распознавание характеристик', 'Подбор ключевых слов', 'Генерация описания', 'SEO-оптимизация']
 
@@ -78,6 +78,8 @@ const CATEGORIES = [
 ]
 
 const CHARACTERISTIC_OPTIONS: Array<{ key: CharacteristicKey; label: string; platforms?: Platform[] }> = [
+  { key: 'price', label: 'Цена' },
+  { key: 'stock', label: 'Остаток', platforms: ['wb', 'avito'] },
   { key: 'color', label: 'Цвет' },
   { key: 'sizes', label: 'Размеры' },
   { key: 'material', label: 'Материал' },
@@ -87,7 +89,7 @@ const CHARACTERISTIC_OPTIONS: Array<{ key: CharacteristicKey; label: string; pla
   { key: 'gender', label: 'Пол', platforms: ['wb', 'avito'] },
   { key: 'season', label: 'Сезон', platforms: ['wb', 'avito'] },
 ]
-const DEFAULT_VISIBLE_CHARACTERISTICS: CharacteristicKey[] = ['color', 'sizes', 'material', 'specs']
+const DEFAULT_VISIBLE_CHARACTERISTICS: CharacteristicKey[] = ['price', 'color', 'sizes', 'material', 'specs']
 
 const DEFAULT_FORM: ProductForm = {
   productName: '', brand: '', category: 'Обувь / Кроссовки',
@@ -604,11 +606,13 @@ export default function DashboardClient({ phone }: { phone: string }) {
             </div>
 
             {/* Цена */}
-            <div style={field}>
-              <label style={lbl}>{platform === 'ozon' ? 'Цена (₽)' : 'Цена до скидки (₽)'}</label>
-              <input style={inp} type="number" value={form.price} onChange={e => setF({ price: e.target.value })}
-                placeholder="3490" onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
+            {isCharacteristicVisible('price') && (
+              <div style={field}>
+                <label style={lbl}>{platform === 'ozon' ? 'Цена (₽)' : 'Цена до скидки (₽)'}</label>
+                <input style={inp} type="number" value={form.price} onChange={e => setF({ price: e.target.value })}
+                  placeholder="3490" onFocus={focusBorder} onBlur={blurBorder} />
+              </div>
+            )}
 
             {/* Фильтр характеристик */}
             <div style={{ ...field, background: '#161622', border: '1px solid #2a2a3d', borderRadius: 12, padding: 12 }}>
@@ -772,11 +776,13 @@ export default function DashboardClient({ phone }: { phone: string }) {
             {/* WB/Авито: остаток + артикул */}
             {platform !== 'ozon' && (
               <div style={{ display: 'flex', gap: 10 }}>
-                <div style={{ ...field, flex: 1 }}>
-                  <label style={lbl}>Остаток (шт)</label>
-                  <input style={inp} type="number" value={form.stock} onChange={e => setF({ stock: e.target.value })} placeholder="100" onFocus={focusBorder} onBlur={blurBorder} />
-                </div>
-                <div style={{ ...field, flex: 1.5 }}>
+                {isCharacteristicVisible('stock') && (
+                  <div style={{ ...field, flex: 1 }}>
+                    <label style={lbl}>Остаток (шт)</label>
+                    <input style={inp} type="number" value={form.stock} onChange={e => setF({ stock: e.target.value })} placeholder="100" onFocus={focusBorder} onBlur={blurBorder} />
+                  </div>
+                )}
+                <div style={{ ...field, flex: isCharacteristicVisible('stock') ? 1.5 : 1 }}>
                   <label style={lbl}>Артикул продавца</label>
                   <input style={inp} value={form.vendorCode} onChange={e => setF({ vendorCode: e.target.value })} placeholder="SHOES-AIR-001" onFocus={focusBorder} onBlur={blurBorder} />
                 </div>
