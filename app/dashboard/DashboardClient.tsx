@@ -65,7 +65,7 @@ interface SubscriptionCabinet {
   }
   payments: Array<{ id: string; planId: string; amount: number; type: string; createdAt: string }>
 }
-type CharacteristicKey = 'price' | 'stock' | 'color' | 'sizes' | 'material' | 'country' | 'specs' | 'notes' | 'gender' | 'season'
+type CharacteristicKey = 'price' | 'stock' | 'color' | 'sizes' | 'material' | 'country' | 'specs' | 'notes' | 'gender' | 'season' | 'discount' | 'vendorCode'
 
 const STEPS = ['Анализ фотографий', 'Распознавание характеристик', 'Подбор ключевых слов', 'Генерация описания', 'SEO-оптимизация']
 
@@ -88,6 +88,8 @@ const CHARACTERISTIC_OPTIONS: Array<{ key: CharacteristicKey; label: string; pla
   { key: 'notes', label: 'Заметки для AI' },
   { key: 'gender', label: 'Пол', platforms: ['wb', 'avito'] },
   { key: 'season', label: 'Сезон', platforms: ['wb', 'avito'] },
+  { key: 'discount', label: 'Скидка', platforms: ['wb', 'avito'] },
+  { key: 'vendorCode', label: 'Артикул продавца' },
 ]
 const DEFAULT_VISIBLE_CHARACTERISTICS: CharacteristicKey[] = ['price', 'color', 'sizes', 'material', 'specs']
 
@@ -614,46 +616,15 @@ export default function DashboardClient({ phone }: { phone: string }) {
               </div>
             )}
 
-            {/* Фильтр характеристик */}
-            <div style={{ ...field, background: '#161622', border: '1px solid #2a2a3d', borderRadius: 12, padding: 12 }}>
-              <label style={{ ...lbl, marginBottom: 10 }}>Показывать характеристики</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {characteristicOptions.map((option) => {
-                  const isActive = isCharacteristicVisible(option.key)
-                  return (
-                    <button
-                      key={option.key}
-                      type="button"
-                      onClick={() => toggleCharacteristic(option.key)}
-                      style={{
-                        padding: '7px 10px',
-                        borderRadius: 8,
-                        border: `1px solid ${isActive ? 'rgba(124,58,237,0.6)' : '#2a2a3d'}`,
-                        background: isActive ? 'rgba(124,58,237,0.15)' : '#1c1c28',
-                        color: isActive ? '#c4b5fd' : '#8f8fb4',
-                        fontFamily: 'inherit',
-                        fontSize: 12,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      {isActive ? '✓ ' : ''}{option.label}
-                    </button>
-                  )
-                })}
-              </div>
-              <p style={{ marginTop: 8, marginBottom: 0, fontSize: 11, color: '#7070a0', lineHeight: 1.4 }}>
-                По умолчанию оставили только важные поля. Включайте остальные по необходимости.
-              </p>
-            </div>
-
             {/* WB/Авито: скидка, пол, сезон */}
             {platform !== 'ozon' && (<>
-              <div style={field}>
-                <label style={lbl}>Скидка (%)</label>
-                <input style={inp} type="number" value={form.discount} onChange={e => setF({ discount: e.target.value })}
-                  placeholder="30" min={0} max={90} onFocus={focusBorder} onBlur={blurBorder} />
-              </div>
+              {isCharacteristicVisible('discount') && (
+                <div style={field}>
+                  <label style={lbl}>Скидка (%)</label>
+                  <input style={inp} type="number" value={form.discount} onChange={e => setF({ discount: e.target.value })}
+                    placeholder="30" min={0} max={90} onFocus={focusBorder} onBlur={blurBorder} />
+                </div>
+              )}
               {(isCharacteristicVisible('gender') || isCharacteristicVisible('season')) && (
                 <div style={{ display: 'flex', gap: 10 }}>
                   {isCharacteristicVisible('gender') && (
@@ -767,10 +738,12 @@ export default function DashboardClient({ phone }: { phone: string }) {
                   </select>
                 </div>
               </div>
-              <div style={field}>
-                <label style={lbl}>Артикул продавца <span style={{ color: '#ff6b6b' }}>*</span></label>
-                <input style={inp} value={form.vendorCodeOzon} onChange={e => setF({ vendorCodeOzon: e.target.value })} placeholder="SHOES-AIR-001" onFocus={focusBorder} onBlur={blurBorder} />
-              </div>
+              {isCharacteristicVisible('vendorCode') && (
+                <div style={field}>
+                  <label style={lbl}>Артикул продавца <span style={{ color: '#ff6b6b' }}>*</span></label>
+                  <input style={inp} value={form.vendorCodeOzon} onChange={e => setF({ vendorCodeOzon: e.target.value })} placeholder="SHOES-AIR-001" onFocus={focusBorder} onBlur={blurBorder} />
+                </div>
+              )}
             </>)}
 
             {/* WB/Авито: остаток + артикул */}
@@ -782,10 +755,12 @@ export default function DashboardClient({ phone }: { phone: string }) {
                     <input style={inp} type="number" value={form.stock} onChange={e => setF({ stock: e.target.value })} placeholder="100" onFocus={focusBorder} onBlur={blurBorder} />
                   </div>
                 )}
-                <div style={{ ...field, flex: isCharacteristicVisible('stock') ? 1.5 : 1 }}>
-                  <label style={lbl}>Артикул продавца</label>
-                  <input style={inp} value={form.vendorCode} onChange={e => setF({ vendorCode: e.target.value })} placeholder="SHOES-AIR-001" onFocus={focusBorder} onBlur={blurBorder} />
-                </div>
+                {isCharacteristicVisible('vendorCode') && (
+                  <div style={{ ...field, flex: isCharacteristicVisible('stock') ? 1.5 : 1 }}>
+                    <label style={lbl}>Артикул продавца</label>
+                    <input style={inp} value={form.vendorCode} onChange={e => setF({ vendorCode: e.target.value })} placeholder="SHOES-AIR-001" onFocus={focusBorder} onBlur={blurBorder} />
+                  </div>
+                )}
               </div>
             )}
 
@@ -804,6 +779,39 @@ export default function DashboardClient({ phone }: { phone: string }) {
                   placeholder="Целевая аудитория, УТП..." onFocus={focusBorder} onBlur={blurBorder} />
               </div>
             )}
+
+            {/* Фильтр характеристик */}
+            <div style={{ ...field, background: '#161622', border: '1px solid #2a2a3d', borderRadius: 12, padding: 12 }}>
+              <label style={{ ...lbl, marginBottom: 10 }}>Показывать характеристики</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {characteristicOptions.map((option) => {
+                  const isActive = isCharacteristicVisible(option.key)
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => toggleCharacteristic(option.key)}
+                      style={{
+                        padding: '7px 10px',
+                        borderRadius: 8,
+                        border: `1px solid ${isActive ? 'rgba(124,58,237,0.6)' : '#2a2a3d'}`,
+                        background: isActive ? 'rgba(124,58,237,0.15)' : '#1c1c28',
+                        color: isActive ? '#c4b5fd' : '#8f8fb4',
+                        fontFamily: 'inherit',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {isActive ? '✓ ' : ''}{option.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p style={{ marginTop: 8, marginBottom: 0, fontSize: 11, color: '#7070a0', lineHeight: 1.4 }}>
+                По умолчанию оставили только важные поля. Включайте остальные по необходимости.
+              </p>
+            </div>
 
             {/* Счётчик лимита */}
             {phone && (
