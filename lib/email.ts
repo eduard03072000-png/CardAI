@@ -84,3 +84,39 @@ async function sendViaSMTP(email: string, subject: string, html: string): Promis
     return false
   }
 }
+export async function sendTeamInviteEmail(
+  memberEmail: string,
+  ownerEmail: string,
+  role: 'admin' | 'editor',
+): Promise<boolean> {
+  const roleLabel = role === 'admin' ? 'Администратор' : 'Редактор'
+  const subject = `CardAI — вас добавили в команду`
+  const html = `
+    <div style="font-family:sans-serif;max-width:440px;margin:0 auto;padding:32px;background:#12121a;color:#f0f0f8;border-radius:16px">
+      <h2 style="text-align:center;margin:0 0 8px">Card<span style="color:#ff4d6d">AI</span></h2>
+      <p style="text-align:center;color:#7070a0;font-size:14px;margin:0 0 24px">Приглашение в команду</p>
+      <p style="font-size:14px;line-height:1.6">
+        Пользователь <strong>${ownerEmail}</strong> добавил вас в свою команду CardAI.<br/>
+        Ваша роль: <strong style="color:#22d3a0">${roleLabel}</strong>
+      </p>
+      <div style="background:#1c1c28;border-radius:12px;padding:16px;margin:20px 0;font-size:13px;color:#7070a0">
+        Войдите на <a href="https://cardai.ru" style="color:#ff4d6d;text-decoration:none">cardai.ru</a> с вашим email, чтобы начать работу.
+      </div>
+      <p style="text-align:center;color:#7070a0;font-size:12px;margin:0">Если вы не ожидали этого письма — просто проигнорируйте его.</p>
+    </div>
+  `
+
+  if (process.env.DEV_MODE === 'true') {
+    console.log(`\n📧 TEAM INVITE DEV MODE`)
+    console.log(`   To: ${memberEmail}`)
+    console.log(`   Owner: ${ownerEmail}`)
+    console.log(`   Role: ${roleLabel}\n`)
+    return true
+  }
+
+  if (process.env.RESEND_API_KEY) return sendViaResend(memberEmail, subject, html)
+  if (process.env.SMTP_HOST) return sendViaSMTP(memberEmail, subject, html)
+
+  console.warn('Email провайдер не настроен для team invite')
+  return false
+}

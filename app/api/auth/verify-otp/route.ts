@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyOTP, formatEmail } from '@/lib/otp'
+import { formatEmail } from '@/lib/otp'
 import { createSession, SESSION_COOKIE_NAME } from '@/lib/session'
+
+const OTP_SERVICE = process.env.OTP_SERVICE_URL || 'http://127.0.0.1:4010'
+const OTP_SECRET = process.env.OTP_API_SECRET || 'cardai-otp-secret-2025'
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,20 +13,23 @@ export async function POST(req: NextRequest) {
     }
 
     const normalized = formatEmail(email)
-    const result = verifyOTP(normalized, code.trim())
 
-    if (result === 'expired') {
-      return NextResponse.json({ error: 'Код устарел. Запросите новый.' }, { status: 400 })
-    }
-    if (result === 'invalid') {
-      return NextResponse.json({ error: 'Неверный код' }, { status: 400 })
-    }
-    if (result === 'too_many') {
-      return NextResponse.json({ error: 'Слишком много попыток. Запросите новый код.' }, { status: 429 })
+    const res = await fetch(`${OTP_SERVICE}/verify-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-otp-secret': OTP_SECRET,
+      },
+      body: JSON.stringify({ email: normalized, code: String(code).trim() }),
+    })
+
+    const data = await res.json()
+    if (!res.ok) {
+      return NextResponse.json({ error: data.error || 'Неверный код' }, { status: res.status })
     }
 
+    // Создаём сессию
     const token = createSession(normalized)
-
     const response = NextResponse.json({ ok: true, email: normalized })
     response.cookies.set(SESSION_COOKIE_NAME(), token, {
       httpOnly: true,
@@ -34,7 +40,8 @@ export async function POST(req: NextRequest) {
     })
 
     return response
-  } catch {
-    return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+  } catch (e) {
+    console.error('verify-otp proxy error:', e)
+    return NextResponse.json({ error: 'Сервис недоступен' }, { status: 500 })
   }
 }

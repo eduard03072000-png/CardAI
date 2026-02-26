@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Platform, ProductForm, GenerateResult, QueueItem, HistoryItem } from '@/lib/types'
-import { exportToCsv, exportToExcel } from '@/lib/excel'
+import { exportToCsv, exportToExcel, exportToJson } from '@/lib/excel'
 
 type Tab = 'result' | 'seo' | 'variants'
 type Section = 'generator' | 'history' | 'plans'
@@ -353,7 +353,7 @@ export default function DashboardClient({ phone }: { phone: string }) {
         const res = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...payload, isBulk: true }),
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Ошибка генерации')
@@ -958,7 +958,7 @@ export default function DashboardClient({ phone }: { phone: string }) {
                     )
                   })}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 8, borderTop: '1px solid rgba(34,211,160,0.2)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, padding: 8, borderTop: '1px solid rgba(34,211,160,0.2)' }}>
                   <button onClick={() => exportToExcel(queue)}
                     style={{ width: '100%', padding: 12, background: 'linear-gradient(135deg,rgba(34,211,160,0.2),rgba(34,211,160,0.08))', border: 'none', borderRadius: 10, color: '#22d3a0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit', letterSpacing: -0.2 }}
                     className="font-unbounded font-bold text-xs">
@@ -968,6 +968,11 @@ export default function DashboardClient({ phone }: { phone: string }) {
                     style={{ width: '100%', padding: 12, background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.35)', borderRadius: 10, color: '#a78bfa', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit', letterSpacing: -0.2 }}
                     className="font-unbounded font-bold text-xs">
                     📄 CSV
+                  </button>
+                  <button onClick={() => exportToJson(queue)}
+                    style={{ width: '100%', padding: 12, background: 'rgba(255,199,0,0.10)', border: '1px solid rgba(255,199,0,0.3)', borderRadius: 10, color: '#ffc700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontFamily: 'inherit', letterSpacing: -0.2 }}
+                    className="font-unbounded font-bold text-xs">
+                    {'{ }'} JSON
                   </button>
                 </div>
               </div>

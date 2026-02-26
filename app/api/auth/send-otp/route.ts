@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateOTP, saveOTP, formatEmail } from '@/lib/otp'
-import { sendEmailOTP } from '@/lib/email'
+import { formatEmail } from '@/lib/otp'
+
+const OTP_SERVICE = process.env.OTP_SERVICE_URL || 'http://127.0.0.1:4010'
+const OTP_SECRET = process.env.OTP_API_SECRET || 'cardai-otp-secret-2025'
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,20 +12,28 @@ export async function POST(req: NextRequest) {
     }
 
     const normalized = formatEmail(email)
-    const code = generateOTP()
-    saveOTP(normalized, code)
 
-    const sent = await sendEmailOTP(normalized, code)
-    if (!sent) {
-      return NextResponse.json({ error: 'Ошибка отправки письма' }, { status: 500 })
+    const res = await fetch(`${OTP_SERVICE}/send-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-otp-secret': OTP_SECRET,
+      },
+      body: JSON.stringify({ email: normalized }),
+    })
+
+    const data = await res.json()
+    if (!res.ok) {
+      return NextResponse.json({ error: data.error || 'Ошибка отправки' }, { status: res.status })
     }
 
     return NextResponse.json({
       ok: true,
-      message: 'Код отправлен на почту',
-      ...(process.env.DEV_MODE === 'true' && { devCode: code }),
+      message: data.message || 'Код отправлен на почту',
+      ...(data.devCode && { devCode: data.devCode }),
     })
-  } catch {
-    return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
+  } catch (e) {
+    console.error('send-otp proxy error:', e)
+    return NextResponse.json({ error: 'Сервис отправки недоступен' }, { status: 500 })
   }
 }

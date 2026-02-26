@@ -1,5 +1,45 @@
 import type { QueueItem } from './types'
 
+export function exportToJson(queue: QueueItem[]) {
+  if (queue.length === 0) return
+
+  const data = queue.map(({ platform, form, result }) => ({
+    platform,
+    vendor_code: form.vendorCode || form.vendorCodeOzon || '',
+    title: result.title,
+    description: result.description,
+    keywords: result.keywords,
+    attributes: result.attributes,
+    variants: result.variants,
+    seo_score: result.seoScore,
+    brand: form.brand,
+    category: form.category,
+    price: form.price,
+    discount: form.discount,
+    color: form.color,
+    sizes: form.sizes,
+    material: form.material,
+    country: form.country,
+    gender: form.gender,
+    season: form.season,
+    barcode: form.barcode,
+    weight_g: form.weightG,
+  }))
+
+  const json = JSON.stringify(data, null, 2)
+  const blob = new Blob([json], { type: 'application/json;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const ts = new Date().toLocaleDateString('ru').replace(/\./g, '-')
+
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `CardAI_export_${queue.length}товаров_${ts}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 export async function exportToExcel(queue: QueueItem[]) {
   if (queue.length === 0) return
 

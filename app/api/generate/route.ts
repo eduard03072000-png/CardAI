@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { platform, productName, specs, category, notes, images,
             brand, color, sizes, material, country, price, discount,
-            gender, season, nds, barcode, weightG, templateStyle } = body
+            gender, season, nds, barcode, weightG, templateStyle, isBulk } = body
 
     if (!productName || !platform) {
       return NextResponse.json({ error: 'Обязательные поля не заполнены' }, { status: 400 })
@@ -118,9 +118,26 @@ export async function POST(req: NextRequest) {
       }, { status: 403 })
     }
 
+    // Проверяем доступность bulk (пакетная загрузка через CSV)
+    if (isBulk === true && !plan.features.includes('bulk_csv')) {
+      return NextResponse.json({
+        error: `Пакетная загрузка CSV доступна начиная с тарифа «Склад».`,
+      }, { status: 403 })
+    }
+
     // Обрабатываем изображения
     let validImages: string[] = []
     if (Array.isArray(images) && images.length > 0) {
+      // Проверяем доступность анализа фотографий AI
+      const hasRealImages = images.some(
+        (img: string) => typeof img === 'string' && !img.includes('image/svg') && img.length > 100
+      )
+      if (hasRealImages && !plan.features.includes('photo_ai')) {
+        return NextResponse.json({
+          error: `Анализ фотографий AI доступен начиная с тарифа «Магазин».`,
+        }, { status: 403 })
+      }
+
       for (const img of images.slice(0, 3)) {
         // Пропускаем SVG (демо-картинки) — Groq не поддерживает SVG
         if (typeof img === 'string' && img.includes('image/svg')) continue

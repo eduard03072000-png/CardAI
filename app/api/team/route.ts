@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentSession } from '@/lib/session'
 import { getUserPlan } from '@/lib/plans'
 import { TEAM_LIMIT, addTeamMember, getTeam, removeTeamMember } from '@/lib/team'
+import { sendTeamInviteEmail } from '@/lib/email'
 
 export async function GET() {
   const session = await getCurrentSession()
@@ -35,6 +36,10 @@ export async function POST(req: NextRequest) {
       String(email || ''),
       role === 'admin' ? 'admin' : 'editor',
     )
+
+    // Отправляем приглашение на email сотруднику (не блокируем ответ если не дошло)
+    sendTeamInviteEmail(String(email || ''), session.email, role === 'admin' ? 'admin' : 'editor').catch(() => {})
+
     return NextResponse.json({ ok: true, member })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Не удалось добавить сотрудника'
