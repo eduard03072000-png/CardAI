@@ -250,7 +250,7 @@ export default function LoginPage() {
 
       {/* Platform badges */}
       <div style={{ position: 'absolute', bottom: 32, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 10, zIndex: 20 }}>
-        {[['#cb11ab', 'WB'], ['#005bff', 'Ozon'], ['#ffc700', 'Авито']].map(([c, n]) => (
+        {[['#cb11ab', 'WB'], ['#005bff', 'Ozon']].map(([c, n]) => (
           <span key={n} style={{ fontSize: 12, padding: '5px 14px', borderRadius: 20, background: `${c}18`, color: c, border: `1px solid ${c}30` }}>{n}</span>
         ))}
       </div>

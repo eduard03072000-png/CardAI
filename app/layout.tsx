@@ -18,7 +18,7 @@ const geologica = Geologica({
 
 export const metadata: Metadata = {
   title: 'CardAI — Генератор карточек для WB и Ozon',
-  description: 'Автоматическая генерация SEO-оптимизированных карточек товаров для Wildberries, Ozon и Авито',
+  description: 'Автоматическая генерация SEO-оптимизированных карточек товаров для Wildberries и Ozon',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

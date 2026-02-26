@@ -79,16 +79,16 @@ const CATEGORIES = [
 
 const CHARACTERISTIC_OPTIONS: Array<{ key: CharacteristicKey; label: string; platforms?: Platform[] }> = [
   { key: 'price', label: 'Цена' },
-  { key: 'stock', label: 'Остаток', platforms: ['wb', 'avito'] },
+  { key: 'stock', label: 'Остаток', platforms: ['wb'] },
   { key: 'color', label: 'Цвет' },
   { key: 'sizes', label: 'Размеры' },
   { key: 'material', label: 'Материал' },
   { key: 'country', label: 'Страна' },
   { key: 'specs', label: 'Доп. характеристики' },
   { key: 'notes', label: 'Заметки для AI' },
-  { key: 'gender', label: 'Пол', platforms: ['wb', 'avito'] },
-  { key: 'season', label: 'Сезон', platforms: ['wb', 'avito'] },
-  { key: 'discount', label: 'Скидка', platforms: ['wb', 'avito'] },
+  { key: 'gender', label: 'Пол', platforms: ['wb'] },
+  { key: 'season', label: 'Сезон', platforms: ['wb'] },
+  { key: 'discount', label: 'Скидка', platforms: ['wb'] },
   { key: 'vendorCode', label: 'Артикул продавца' },
 ]
 const DEFAULT_VISIBLE_CHARACTERISTICS: CharacteristicKey[] = ['price', 'color', 'sizes', 'material', 'specs']
@@ -508,7 +508,7 @@ export default function DashboardClient({ phone }: { phone: string }) {
           Card<span style={{ color: '#ff4d6d' }}>AI</span>
         </div>
         <div style={{ display: 'flex', gap: 12, flex: 1 }}>
-          {[['#cb11ab', 'WB'], ['#005bff', 'Ozon'], ['#ffc700', 'Авито']].map(([c, n]) => (
+          {[['#cb11ab', 'WB'], ['#005bff', 'Ozon']].map(([c, n]) => (
             <span key={n} style={{ padding: '5px 13px', borderRadius: 20, fontSize: 12, fontWeight: 500, background: `${c}18`, color: c, border: `1px solid ${c}30` }}>{n}</span>
           ))}
         </div>
@@ -558,7 +558,7 @@ export default function DashboardClient({ phone }: { phone: string }) {
             {/* Platform */}
             <div style={field}>
               <label style={lbl}>Платформа</label>
-              <div style={{ display: 'flex', gap: 8 }}>{pBtn('wb', 'WB', '🛍')}{pBtn('ozon', 'Ozon', '🔵')}{pBtn('avito', 'Авито', '🟡')}</div>
+              <div style={{ display: 'flex', gap: 8 }}>{pBtn('wb', 'WB', '🛍')}{pBtn('ozon', 'Ozon', '🔵')}</div>
             </div>
 
             {/* Photo upload */}
@@ -1086,7 +1086,6 @@ export default function DashboardClient({ phone }: { phone: string }) {
               <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(124,58,237,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🧩</div>
               <div>
                 <div className="font-unbounded font-bold" style={{ fontSize: 12 }}>Шаблон карточки (мой стиль)</div>
-                <div style={{ fontSize: 11, color: '#7070a0' }}>Отдельно от формы, чтобы не перегружать ввод товара</div>
               </div>
             </div>
             <select style={{ ...inp, maxWidth: 240 }} onChange={(e) => applyTemplate(e.target.value)} defaultValue="">
@@ -1517,7 +1516,7 @@ function PlansView({
     { id: 'seller', emoji: '🛒', name: 'Продавец', price: '690', tag: 'Начни продавать с AI', btn: 'Подключить →', btnType: 'starter' as const, popular: false,
       features: [{ t: '5 карточек в день', ok: true }, { t: 'WB + Ozon', ok: true }, { t: 'Excel + CSV экспорт', ok: true }, { t: 'Базовый SEO-анализ', ok: true }, { t: 'Email-поддержка', ok: true }, { t: 'История 7 дней', ok: true }, { t: '3 варианта заголовков', ok: false }, { t: 'Анализ фотографий AI', ok: false }] },
     { id: 'shop', emoji: '🏬', name: 'Магазин', price: '1 490', tag: 'Когда товаров уже много', btn: 'Открыть магазин →', btnType: 'pro' as const, popular: true,
-      features: [{ t: '20 карточек в день', ok: true }, { t: 'WB + Ozon + Авито', ok: true }, { t: 'Excel + CSV экспорт', ok: true }, { t: 'Продвинутый SEO-анализ', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 30 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: false }] },
+      features: [{ t: '20 карточек в день', ok: true }, { t: 'WB + Ozon', ok: true }, { t: 'Excel + CSV экспорт', ok: true }, { t: 'Продвинутый SEO-анализ', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 30 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: false }] },
     { id: 'warehouse', emoji: '🏭', name: 'Склад', price: '3 490', tag: 'Масштабируй продажи', btn: 'Арендовать склад →', btnType: 'team' as const, popular: false,
       features: [{ t: '100 карточек в день', ok: true }, { t: 'Все платформы', ok: true }, { t: 'Excel/CSV/JSON экспорт', ok: true }, { t: 'SEO-анализ + рекомендации', ok: true }, { t: '3 варианта заголовков', ok: true }, { t: 'Анализ фотографий AI', ok: true }, { t: 'История 90 дней', ok: true }, { t: 'Пакетная загрузка CSV', ok: true }] },
     { id: 'network', emoji: '🌐', name: 'Сеть', price: '6 990', tag: 'Для команд и агентств', btn: 'Запустить сеть →', btnType: 'enterprise' as const, popular: false,
@@ -1708,13 +1707,14 @@ function HistoryView({
   onReuse: (item: ServerHistoryItem) => void
   onLogout: () => void
 }) {
-  const [platformFilter, setPlatformFilter] = useState<'all' | 'wb' | 'ozon' | 'avito'>('all')
+  const [platformFilter, setPlatformFilter] = useState<'all' | 'wb' | 'ozon'>('all')
   const [query, setQuery] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
 
   const filteredIds = new Set(
     records
+      .filter((r) => r.platform !== 'avito')
       .filter((r) => platformFilter === 'all' || r.platform === platformFilter)
       .filter((r) => {
         if (!query.trim()) return true
@@ -1741,11 +1741,10 @@ function HistoryView({
           <div style={{ display: 'inline-block', background: 'rgba(255,77,109,0.12)', border: '1px solid rgba(255,77,109,0.3)', color: '#ff4d6d', fontSize: 11, fontWeight: 500, letterSpacing: 2, textTransform: 'uppercase', padding: '6px 16px', borderRadius: 20, marginBottom: 20 }}>📋 История</div>
           <h1 className="font-unbounded font-black" style={{ fontSize: 'clamp(28px,4vw,44px)', letterSpacing: -2 }}>Твои карточки</h1>
           <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '120px 1fr 140px 140px', gap: 8 }}>
-            <select value={platformFilter} onChange={(e) => setPlatformFilter(e.target.value as 'all' | 'wb' | 'ozon' | 'avito')} style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, color: '#f0f0f8', padding: '8px 10px', fontFamily: 'inherit' }}>
+            <select value={platformFilter} onChange={(e) => setPlatformFilter(e.target.value as 'all' | 'wb' | 'ozon')} style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, color: '#f0f0f8', padding: '8px 10px', fontFamily: 'inherit' }}>
               <option value="all">Все</option>
               <option value="wb">WB</option>
               <option value="ozon">Ozon</option>
-              <option value="avito">Avito</option>
             </select>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по товару/названию" style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, color: '#f0f0f8', padding: '8px 10px', fontFamily: 'inherit' }} />
             <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={{ background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 8, color: '#f0f0f8', padding: '8px 10px', fontFamily: 'inherit' }} />
