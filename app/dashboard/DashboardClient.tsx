@@ -65,6 +65,7 @@ interface SubscriptionCabinet {
   }
   payments: Array<{ id: string; planId: string; amount: number; type: string; createdAt: string }>
 }
+type CharacteristicKey = 'color' | 'sizes' | 'material' | 'country' | 'specs' | 'notes' | 'gender' | 'season'
 
 const STEPS = ['Анализ фотографий', 'Распознавание характеристик', 'Подбор ключевых слов', 'Генерация описания', 'SEO-оптимизация']
 
@@ -75,6 +76,18 @@ const CATEGORIES = [
   'Дом и сад / Мебель', 'Красота / Уход за лицом',
   'Детские товары', 'Спорт / Тренажёры', 'Аксессуары / Сумки',
 ]
+
+const CHARACTERISTIC_OPTIONS: Array<{ key: CharacteristicKey; label: string; platforms?: Platform[] }> = [
+  { key: 'color', label: 'Цвет' },
+  { key: 'sizes', label: 'Размеры' },
+  { key: 'material', label: 'Материал' },
+  { key: 'country', label: 'Страна' },
+  { key: 'specs', label: 'Доп. характеристики' },
+  { key: 'notes', label: 'Заметки для AI' },
+  { key: 'gender', label: 'Пол', platforms: ['wb', 'avito'] },
+  { key: 'season', label: 'Сезон', platforms: ['wb', 'avito'] },
+]
+const DEFAULT_VISIBLE_CHARACTERISTICS: CharacteristicKey[] = ['color', 'sizes', 'material', 'specs']
 
 const DEFAULT_FORM: ProductForm = {
   productName: '', brand: '', category: 'Обувь / Кроссовки',
@@ -183,6 +196,7 @@ export default function DashboardClient({ phone }: { phone: string }) {
     length: 'medium',
     keyPhrases: '',
   })
+  const [visibleCharacteristics, setVisibleCharacteristics] = useState<CharacteristicKey[]>(DEFAULT_VISIBLE_CHARACTERISTICS)
   const [batchCsvFile, setBatchCsvFile] = useState<File | null>(null)
   const [batchRunning, setBatchRunning] = useState(false)
   const [batchProgress, setBatchProgress] = useState({ total: 0, processed: 0, success: 0, failed: 0 })
@@ -399,6 +413,15 @@ export default function DashboardClient({ phone }: { phone: string }) {
   function copy(text: string, key: string) { navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(''), 2000) }
 
   const scoreColor = (s: number) => s >= 75 ? '#22d3a0' : s >= 55 ? '#ffc700' : '#ff4d6d'
+  const characteristicOptions = CHARACTERISTIC_OPTIONS.filter((option) => !option.platforms || option.platforms.includes(platform))
+  const isCharacteristicVisible = (key: CharacteristicKey) => visibleCharacteristics.includes(key)
+
+  function toggleCharacteristic(key: CharacteristicKey) {
+    setVisibleCharacteristics((prev) => {
+      if (prev.includes(key)) return prev.filter((item) => item !== key)
+      return [...prev, key]
+    })
+  }
 
   // ── Styles helpers ────────────────────────────────────────────
   const inp: React.CSSProperties = {
@@ -587,6 +610,39 @@ export default function DashboardClient({ phone }: { phone: string }) {
                 placeholder="3490" onFocus={focusBorder} onBlur={blurBorder} />
             </div>
 
+            {/* Фильтр характеристик */}
+            <div style={{ ...field, background: '#161622', border: '1px solid #2a2a3d', borderRadius: 12, padding: 12 }}>
+              <label style={{ ...lbl, marginBottom: 10 }}>Показывать характеристики</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {characteristicOptions.map((option) => {
+                  const isActive = isCharacteristicVisible(option.key)
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => toggleCharacteristic(option.key)}
+                      style={{
+                        padding: '7px 10px',
+                        borderRadius: 8,
+                        border: `1px solid ${isActive ? 'rgba(124,58,237,0.6)' : '#2a2a3d'}`,
+                        background: isActive ? 'rgba(124,58,237,0.15)' : '#1c1c28',
+                        color: isActive ? '#c4b5fd' : '#8f8fb4',
+                        fontFamily: 'inherit',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {isActive ? '✓ ' : ''}{option.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p style={{ marginTop: 8, marginBottom: 0, fontSize: 11, color: '#7070a0', lineHeight: 1.4 }}>
+                По умолчанию оставили только важные поля. Включайте остальные по необходимости.
+              </p>
+            </div>
+
             {/* WB/Авито: скидка, пол, сезон */}
             {platform !== 'ozon' && (<>
               <div style={field}>
@@ -594,20 +650,26 @@ export default function DashboardClient({ phone }: { phone: string }) {
                 <input style={inp} type="number" value={form.discount} onChange={e => setF({ discount: e.target.value })}
                   placeholder="30" min={0} max={90} onFocus={focusBorder} onBlur={blurBorder} />
               </div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <div style={{ ...field, flex: 1 }}>
-                  <label style={lbl}>Пол</label>
-                  <select style={{ ...inp, appearance: 'none' }} value={form.gender} onChange={e => setF({ gender: e.target.value })} onFocus={focusBorder} onBlur={blurBorder}>
-                    <option value="">Не указан</option><option>Мужской</option><option>Женский</option><option>Унисекс</option><option>Детский</option>
-                  </select>
+              {(isCharacteristicVisible('gender') || isCharacteristicVisible('season')) && (
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {isCharacteristicVisible('gender') && (
+                    <div style={{ ...field, flex: 1 }}>
+                      <label style={lbl}>Пол</label>
+                      <select style={{ ...inp, appearance: 'none' }} value={form.gender} onChange={e => setF({ gender: e.target.value })} onFocus={focusBorder} onBlur={blurBorder}>
+                        <option value="">Не указан</option><option>Мужской</option><option>Женский</option><option>Унисекс</option><option>Детский</option>
+                      </select>
+                    </div>
+                  )}
+                  {isCharacteristicVisible('season') && (
+                    <div style={{ ...field, flex: 1 }}>
+                      <label style={lbl}>Сезон</label>
+                      <select style={{ ...inp, appearance: 'none' }} value={form.season} onChange={e => setF({ season: e.target.value })} onFocus={focusBorder} onBlur={blurBorder}>
+                        <option value="">Не указан</option><option>Весна-осень</option><option>Лето</option><option>Зима</option><option>Круглогодичный</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
-                <div style={{ ...field, flex: 1 }}>
-                  <label style={lbl}>Сезон</label>
-                  <select style={{ ...inp, appearance: 'none' }} value={form.season} onChange={e => setF({ season: e.target.value })} onFocus={focusBorder} onBlur={blurBorder}>
-                    <option value="">Не указан</option><option>Весна-осень</option><option>Лето</option><option>Зима</option><option>Круглогодичный</option>
-                  </select>
-                </div>
-              </div>
+              )}
             </>)}
 
             {/* Ozon: НДС */}
@@ -626,30 +688,40 @@ export default function DashboardClient({ phone }: { phone: string }) {
             </>)}
 
             {/* Общие: цвет, размеры */}
-            <div style={field}>
-              <label style={lbl}>Цвет</label>
-              <input style={inp} value={form.color} onChange={e => setF({ color: e.target.value })}
-                placeholder="Белый/Чёрный" onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
-            <div style={field}>
-              <label style={lbl}>Размеры</label>
-              <input style={inp} value={form.sizes} onChange={e => setF({ sizes: e.target.value })}
-                placeholder="40, 41, 42, 43, 44, 45" onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
+            {isCharacteristicVisible('color') && (
+              <div style={field}>
+                <label style={lbl}>Цвет</label>
+                <input style={inp} value={form.color} onChange={e => setF({ color: e.target.value })}
+                  placeholder="Белый/Чёрный" onFocus={focusBorder} onBlur={blurBorder} />
+              </div>
+            )}
+            {isCharacteristicVisible('sizes') && (
+              <div style={field}>
+                <label style={lbl}>Размеры</label>
+                <input style={inp} value={form.sizes} onChange={e => setF({ sizes: e.target.value })}
+                  placeholder="40, 41, 42, 43, 44, 45" onFocus={focusBorder} onBlur={blurBorder} />
+              </div>
+            )}
 
             {/* Материал + страна */}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <div style={{ ...field, flex: 1.5 }}>
-                <label style={lbl}>Материал</label>
-                <input style={inp} value={form.material} onChange={e => setF({ material: e.target.value })}
-                  placeholder="Сетка, замша" onFocus={focusBorder} onBlur={blurBorder} />
+            {(isCharacteristicVisible('material') || isCharacteristicVisible('country')) && (
+              <div style={{ display: 'flex', gap: 10 }}>
+                {isCharacteristicVisible('material') && (
+                  <div style={{ ...field, flex: isCharacteristicVisible('country') ? 1.5 : 1 }}>
+                    <label style={lbl}>Материал</label>
+                    <input style={inp} value={form.material} onChange={e => setF({ material: e.target.value })}
+                      placeholder="Сетка, замша" onFocus={focusBorder} onBlur={blurBorder} />
+                  </div>
+                )}
+                {isCharacteristicVisible('country') && (
+                  <div style={{ ...field, flex: 1 }}>
+                    <label style={lbl}>Страна</label>
+                    <input style={inp} value={form.country} onChange={e => setF({ country: e.target.value })}
+                      placeholder="Китай" onFocus={focusBorder} onBlur={blurBorder} />
+                  </div>
+                )}
               </div>
-              <div style={{ ...field, flex: 1 }}>
-                <label style={lbl}>Страна</label>
-                <input style={inp} value={form.country} onChange={e => setF({ country: e.target.value })}
-                  placeholder="Китай" onFocus={focusBorder} onBlur={blurBorder} />
-              </div>
-            </div>
+            )}
 
             {/* Ozon: габариты */}
             {platform === 'ozon' && (<>
@@ -712,39 +784,20 @@ export default function DashboardClient({ phone }: { phone: string }) {
             )}
 
             {/* Характеристики + заметки */}
-            <div style={field}>
-              <label style={lbl}>Доп. характеристики</label>
-              <textarea style={{ ...inp, resize: 'none', minHeight: 72 }} value={form.specs} onChange={e => setF({ specs: e.target.value })}
-                placeholder="подошва: EVA, застёжка: шнурки..." onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
-            <div style={field}>
-              <label style={lbl}>Заметки для AI</label>
-              <input style={inp} value={form.notes} onChange={e => setF({ notes: e.target.value })}
-                placeholder="Целевая аудитория, УТП..." onFocus={focusBorder} onBlur={blurBorder} />
-            </div>
-
-            {/* Шаблон стиля */}
-            <div style={{ ...field, background: '#161622', border: '1px solid #2a2a3d', borderRadius: 12, padding: 12 }}>
-              <label style={{ ...lbl, marginBottom: 10 }}>Шаблон карточки (мой стиль)</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                <input style={inp} value={templateStyle.tone} onChange={(e) => setTemplateStyle((p) => ({ ...p, tone: e.target.value }))} placeholder="Тон: экспертный / дружелюбный..." />
-                <select style={{ ...inp, appearance: 'none' }} value={templateStyle.length} onChange={(e) => setTemplateStyle((p) => ({ ...p, length: e.target.value as 'short' | 'medium' | 'long' }))}>
-                  <option value="short">Коротко</option>
-                  <option value="medium">Средне</option>
-                  <option value="long">Подробно</option>
-                </select>
+            {isCharacteristicVisible('specs') && (
+              <div style={field}>
+                <label style={lbl}>Доп. характеристики</label>
+                <textarea style={{ ...inp, resize: 'none', minHeight: 72 }} value={form.specs} onChange={e => setF({ specs: e.target.value })}
+                  placeholder="подошва: EVA, застёжка: шнурки..." onFocus={focusBorder} onBlur={blurBorder} />
               </div>
-              <input style={{ ...inp, marginBottom: 8 }} value={templateStyle.structure} onChange={(e) => setTemplateStyle((p) => ({ ...p, structure: e.target.value }))} placeholder="Структура: выгоды -> характеристики -> призыв" />
-              <input style={{ ...inp, marginBottom: 8 }} value={templateStyle.keyPhrases} onChange={(e) => setTemplateStyle((p) => ({ ...p, keyPhrases: e.target.value }))} placeholder="Ключевые фразы через запятую" />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8 }}>
-                <input style={inp} value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="Название шаблона" />
-                <button onClick={saveTemplate} type="button" style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.35)', borderRadius: 8, color: '#a78bfa', padding: '0 10px', fontFamily: 'inherit', cursor: 'pointer' }}>Сохранить</button>
-                <select style={{ ...inp, minWidth: 160 }} onChange={(e) => applyTemplate(e.target.value)} defaultValue="">
-                  <option value="" disabled>Выбрать шаблон</option>
-                  {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
+            )}
+            {isCharacteristicVisible('notes') && (
+              <div style={field}>
+                <label style={lbl}>Заметки для AI</label>
+                <input style={inp} value={form.notes} onChange={e => setF({ notes: e.target.value })}
+                  placeholder="Целевая аудитория, УТП..." onFocus={focusBorder} onBlur={blurBorder} />
               </div>
-            </div>
+            )}
 
             {/* Счётчик лимита */}
             {phone && (
@@ -767,7 +820,7 @@ export default function DashboardClient({ phone }: { phone: string }) {
                 style={{ flex: 1, padding: 16, background: 'linear-gradient(135deg,#ff4d6d,#7c3aed)', border: 'none', borderRadius: 12, color: 'white', fontSize: 13, cursor: form.productName ? 'pointer' : 'not-allowed', transition: 'all 0.2s', letterSpacing: -0.3, opacity: loading || !form.productName ? 0.5 : 1 }}>
                 {loading ? '⟳ Генерирую...' : !phone ? '🔐 Войдите, чтобы сгенерировать' : images.length > 0 ? '✦ Анализировать фото и создать карточку' : '✦ Сгенерировать карточку'}
               </button>
-              <button onClick={() => { setForm(DEFAULT_FORM); setImages([]); setResult(null); setError('') }}
+              <button onClick={() => { setForm(DEFAULT_FORM); setImages([]); setResult(null); setError(''); setVisibleCharacteristics(DEFAULT_VISIBLE_CHARACTERISTICS) }}
                 title="Очистить все поля"
                 style={{ padding: '16px 18px', background: '#1c1c28', border: '1px solid #2a2a3d', borderRadius: 12, color: '#7070a0', fontSize: 16, cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
                 onMouseOver={e => { e.currentTarget.style.borderColor = '#ff4d6d'; e.currentTarget.style.color = '#ff4d6d' }}
@@ -1006,6 +1059,41 @@ export default function DashboardClient({ phone }: { phone: string }) {
                   Успешные строки автоматически добавлены в блок «В экспорте», где можно скачать Excel/CSV.
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Шаблон карточки вынесен отдельно */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px 24px', position: 'relative', zIndex: 2 }}>
+        <div style={{ background: '#12121a', border: '1px solid #2a2a3d', borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid #2a2a3d', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(124,58,237,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🧩</div>
+              <div>
+                <div className="font-unbounded font-bold" style={{ fontSize: 12 }}>Шаблон карточки (мой стиль)</div>
+                <div style={{ fontSize: 11, color: '#7070a0' }}>Отдельно от формы, чтобы не перегружать ввод товара</div>
+              </div>
+            </div>
+            <select style={{ ...inp, maxWidth: 240 }} onChange={(e) => applyTemplate(e.target.value)} defaultValue="">
+              <option value="" disabled>Выбрать сохранённый шаблон</option>
+              {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+          <div style={{ padding: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px', gap: 8, marginBottom: 8 }}>
+              <input style={inp} value={templateStyle.tone} onChange={(e) => setTemplateStyle((p) => ({ ...p, tone: e.target.value }))} placeholder="Тон: экспертный / дружелюбный..." />
+              <select style={{ ...inp, appearance: 'none' }} value={templateStyle.length} onChange={(e) => setTemplateStyle((p) => ({ ...p, length: e.target.value as 'short' | 'medium' | 'long' }))}>
+                <option value="short">Коротко</option>
+                <option value="medium">Средне</option>
+                <option value="long">Подробно</option>
+              </select>
+            </div>
+            <input style={{ ...inp, marginBottom: 8 }} value={templateStyle.structure} onChange={(e) => setTemplateStyle((p) => ({ ...p, structure: e.target.value }))} placeholder="Структура: выгоды -> характеристики -> призыв" />
+            <input style={{ ...inp, marginBottom: 8 }} value={templateStyle.keyPhrases} onChange={(e) => setTemplateStyle((p) => ({ ...p, keyPhrases: e.target.value }))} placeholder="Ключевые фразы через запятую" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+              <input style={inp} value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="Название шаблона" />
+              <button onClick={saveTemplate} type="button" style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.35)', borderRadius: 8, color: '#a78bfa', padding: '0 14px', fontFamily: 'inherit', cursor: 'pointer' }}>Сохранить</button>
             </div>
           </div>
         </div>
