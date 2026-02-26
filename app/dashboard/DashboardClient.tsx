@@ -92,6 +92,8 @@ const CHARACTERISTIC_OPTIONS: Array<{ key: CharacteristicKey; label: string; pla
   { key: 'vendorCode', label: 'Артикул продавца' },
 ]
 const DEFAULT_VISIBLE_CHARACTERISTICS: CharacteristicKey[] = ['price', 'color', 'sizes', 'material', 'specs']
+const CHARACTERISTICS_STORAGE_KEY = 'cardai.visible-characteristics'
+const CHARACTERISTIC_KEY_SET = new Set<CharacteristicKey>(CHARACTERISTIC_OPTIONS.map((option) => option.key))
 
 const DEFAULT_FORM: ProductForm = {
   productName: '', brand: '', category: 'Обувь / Кроссовки',
@@ -200,7 +202,19 @@ export default function DashboardClient({ phone }: { phone: string }) {
     length: 'medium',
     keyPhrases: '',
   })
-  const [visibleCharacteristics, setVisibleCharacteristics] = useState<CharacteristicKey[]>(DEFAULT_VISIBLE_CHARACTERISTICS)
+  const [visibleCharacteristics, setVisibleCharacteristics] = useState<CharacteristicKey[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_VISIBLE_CHARACTERISTICS
+    try {
+      const raw = window.localStorage.getItem(CHARACTERISTICS_STORAGE_KEY)
+      if (!raw) return DEFAULT_VISIBLE_CHARACTERISTICS
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return DEFAULT_VISIBLE_CHARACTERISTICS
+      const valid = parsed.filter((item): item is CharacteristicKey => typeof item === 'string' && CHARACTERISTIC_KEY_SET.has(item as CharacteristicKey))
+      return valid.length > 0 ? Array.from(new Set(valid)) : DEFAULT_VISIBLE_CHARACTERISTICS
+    } catch {
+      return DEFAULT_VISIBLE_CHARACTERISTICS
+    }
+  })
   const [batchCsvFile, setBatchCsvFile] = useState<File | null>(null)
   const [batchRunning, setBatchRunning] = useState(false)
   const [batchProgress, setBatchProgress] = useState({ total: 0, processed: 0, success: 0, failed: 0 })
@@ -238,6 +252,13 @@ export default function DashboardClient({ phone }: { phone: string }) {
   useEffect(() => {
     loadAccountData().catch(() => {})
   }, [phone])
+
+  // ── Persist visible characteristics ───────────────────────────
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CHARACTERISTICS_STORAGE_KEY, JSON.stringify(visibleCharacteristics))
+    } catch {}
+  }, [visibleCharacteristics])
 
   // ── Images ────────────────────────────────────────────────────
   function fileToDataUrl(file: File): Promise<string> {
