@@ -42,6 +42,15 @@ interface CardTemplate {
   length: 'short' | 'medium' | 'long'
   keyPhrases: string
 }
+interface PublicTemplateStyle {
+  id: string
+  name: string
+  description: string
+  tone: string
+  structure: string
+  length: 'short' | 'medium' | 'long'
+  keyPhrases: string
+}
 interface SubscriptionCabinet {
   plan: {
     id: string
@@ -94,6 +103,53 @@ const CHARACTERISTIC_OPTIONS: Array<{ key: CharacteristicKey; label: string; pla
 const DEFAULT_VISIBLE_CHARACTERISTICS: CharacteristicKey[] = ['price', 'color', 'sizes', 'material', 'specs']
 const CHARACTERISTICS_STORAGE_KEY = 'cardai.visible-characteristics'
 const CHARACTERISTIC_KEY_SET = new Set<CharacteristicKey>(CHARACTERISTIC_OPTIONS.map((option) => option.key))
+const PUBLIC_TEMPLATE_STYLES: PublicTemplateStyle[] = [
+  {
+    id: 'quick-benefit',
+    name: 'Быстрая выгода',
+    description: 'Коротко и по делу, для ленты и быстрых решений.',
+    tone: 'Дружелюбный, уверенный, без воды',
+    structure: 'Проблема -> решение -> выгода -> мини призыв',
+    length: 'short',
+    keyPhrases: 'выгодно, быстро, удобно, для каждого дня',
+  },
+  {
+    id: 'expert-seo',
+    name: 'Эксперт SEO',
+    description: 'Максимум релевантных ключей и характеристик.',
+    tone: 'Экспертный, точный, фактический',
+    structure: 'Ключевая фраза -> характеристики -> сценарии использования -> вывод',
+    length: 'long',
+    keyPhrases: 'характеристики, материал, размеры, качество, официальный',
+  },
+  {
+    id: 'premium-brand',
+    name: 'Премиум бренд',
+    description: 'Упор на ценность, эмоции и образ бренда.',
+    tone: 'Премиальный, уверенный, вдохновляющий',
+    structure: 'Образ бренда -> ценность -> детали -> эмоциональный призыв',
+    length: 'medium',
+    keyPhrases: 'премиум, стиль, коллекция, качество, статус',
+  },
+  {
+    id: 'marketplace-conversion',
+    name: 'Конверсия маркетплейс',
+    description: 'Формат под продажу: УТП, выгоды, возражения.',
+    tone: 'Продающий, энергичный, понятный',
+    structure: 'УТП -> выгоды -> ответы на возражения -> призыв к покупке',
+    length: 'medium',
+    keyPhrases: 'хит продаж, отзывы, удобство, надёжность, гарантия',
+  },
+  {
+    id: 'minimal-clean',
+    name: 'Минимализм',
+    description: 'Лаконичный стиль для аккуратной карточки.',
+    tone: 'Нейтральный, аккуратный, спокойный',
+    structure: 'Что это -> 3 ключевые особенности -> кому подходит',
+    length: 'short',
+    keyPhrases: 'лаконично, практично, базовый, универсальный',
+  },
+]
 
 const DEFAULT_FORM: ProductForm = {
   productName: '', brand: '', category: 'Обувь / Кроссовки',
@@ -337,6 +393,17 @@ export default function DashboardClient({ phone }: { phone: string }) {
       length: tpl.length || 'medium',
       keyPhrases: tpl.keyPhrases || '',
     })
+  }
+
+  function applyPublicTemplate(tpl: PublicTemplateStyle) {
+    setTemplateStyle({
+      tone: tpl.tone,
+      structure: tpl.structure,
+      length: tpl.length,
+      keyPhrases: tpl.keyPhrases,
+    })
+    setTemplateName(tpl.name)
+    setError('')
   }
 
   function parseCsv(content: string): Array<Record<string, string>> {
@@ -1115,6 +1182,25 @@ export default function DashboardClient({ phone }: { phone: string }) {
             </select>
           </div>
           <div style={{ padding: 20 }}>
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, color: '#8f8fb4', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Публичные шаблоны</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 8 }}>
+                {PUBLIC_TEMPLATE_STYLES.map((tpl) => (
+                  <div key={tpl.id} style={{ background: '#161622', border: '1px solid #2a2a3d', borderRadius: 10, padding: 10 }}>
+                    <div className="font-unbounded font-bold" style={{ fontSize: 11, marginBottom: 4 }}>{tpl.name}</div>
+                    <div style={{ fontSize: 11, color: '#7070a0', lineHeight: 1.4, minHeight: 30 }}>{tpl.description}</div>
+                    <div style={{ fontSize: 10, color: '#8f8fb4', marginTop: 6 }}>Формат: {tpl.length === 'short' ? 'Коротко' : tpl.length === 'medium' ? 'Средне' : 'Подробно'}</div>
+                    <button
+                      type="button"
+                      onClick={() => applyPublicTemplate(tpl)}
+                      style={{ marginTop: 8, width: '100%', padding: '7px 9px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.35)', background: 'rgba(124,58,237,0.12)', color: '#c4b5fd', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer' }}
+                    >
+                      Применить
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px', gap: 8, marginBottom: 8 }}>
               <input style={inp} value={templateStyle.tone} onChange={(e) => setTemplateStyle((p) => ({ ...p, tone: e.target.value }))} placeholder="Тон: экспертный / дружелюбный..." />
               <select style={{ ...inp, appearance: 'none' }} value={templateStyle.length} onChange={(e) => setTemplateStyle((p) => ({ ...p, length: e.target.value as 'short' | 'medium' | 'long' }))}>
