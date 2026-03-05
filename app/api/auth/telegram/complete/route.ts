@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { token, telegramId, username, phone } = await req.json()
+    const { token, telegramId, username, firstName, lastName, phone } = await req.json()
 
     if (!token || !telegramId) {
       return NextResponse.json({ error: 'token и telegramId обязательны' }, { status: 400 })
@@ -41,6 +41,8 @@ export async function POST(req: NextRequest) {
       status: 'done',
       telegramId: Number(telegramId),
       username: typeof username === 'string' ? username : undefined,
+      firstName: typeof firstName === 'string' ? firstName : undefined,
+      lastName: typeof lastName === 'string' ? lastName : undefined,
       email: typeof phone === 'string' ? phone : undefined,
     }
 

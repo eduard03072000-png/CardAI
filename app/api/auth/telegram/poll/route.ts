@@ -28,13 +28,16 @@ export async function GET(req: NextRequest) {
     }
 
     const identity = `tg:${entry.telegramId}`
-    const display = entry.username ? `tg:@${entry.username}` : identity
+    const fullName = [entry.firstName, entry.lastName].filter(Boolean).join(' ').trim()
+    const display = entry.username ? `@${entry.username}` : fullName || identity
     const sessionToken = createSession(identity, {
       display,
       method: 'telegram',
       meta: {
         telegramId: entry.telegramId,
         username: entry.username,
+        firstName: entry.firstName,
+        lastName: entry.lastName,
         email: entry.email,
       },
     })

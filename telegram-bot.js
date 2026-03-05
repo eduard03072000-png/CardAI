@@ -61,7 +61,15 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg, match) => {
     keyboard,
   )
 
-  await completeLogin(loginToken, msg.from.id, msg.from.username, undefined, chatId)
+  await completeLogin(
+    loginToken,
+    msg.from.id,
+    msg.from.username,
+    msg.from.first_name,
+    msg.from.last_name,
+    undefined,
+    chatId,
+  )
 })
 
 bot.on('contact', async (msg) => {
@@ -70,15 +78,25 @@ bot.on('contact', async (msg) => {
   const loginToken = bot._loginTokens[chatId]
   if (!loginToken) return
 
-  await completeLogin(loginToken, msg.from.id, msg.from.username, contact.phone_number, chatId)
+  await completeLogin(
+    loginToken,
+    msg.from.id,
+    msg.from.username,
+    msg.from?.first_name,
+    msg.from?.last_name,
+    contact.phone_number,
+    chatId,
+  )
 })
 
-async function completeLogin(token, telegramId, username, phone, chatId) {
+async function completeLogin(token, telegramId, username, firstName, lastName, phone, chatId) {
   try {
     const data = await postJson('/api/auth/telegram/complete', {
       token,
       telegramId,
       username,
+      firstName,
+      lastName,
       phone,
     })
     if (!data || !data.ok) {

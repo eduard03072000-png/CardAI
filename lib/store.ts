@@ -53,6 +53,8 @@ export interface TelegramLoginEntry {
   status: 'pending' | 'done'
   telegramId?: number
   username?: string
+  firstName?: string
+  lastName?: string
   email?: string
   createdAt: number
 }
@@ -77,6 +79,8 @@ export interface UserEntry {
     email?: string
     telegramId?: number
     username?: string
+    firstName?: string
+    lastName?: string
     vkId?: string
     yandexId?: string
   }
